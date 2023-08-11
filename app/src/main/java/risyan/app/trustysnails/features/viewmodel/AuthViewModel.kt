@@ -6,10 +6,10 @@ import risyan.app.trustysnails.basecomponent.Event
 import risyan.app.trustysnails.basecomponent.ResourceState
 import risyan.app.trustysnails.data.remote.api.AuthStatus
 import risyan.app.trustysnails.data.remote.model.FbUserLoginData
-import risyan.app.trustysnails.domain.LoginUseCase
-import risyan.app.trustysnails.domain.LoginWithGoogleUseCase
-import risyan.app.trustysnails.domain.RegisterUseCase
-import risyan.app.trustysnails.domain.UnregisterUseCase
+import risyan.app.trustysnails.domain.usecase.auth.LoginUseCase
+import risyan.app.trustysnails.domain.usecase.auth.LoginWithGoogleUseCase
+import risyan.app.trustysnails.domain.usecase.auth.RegisterUseCase
+import risyan.app.trustysnails.domain.usecase.auth.UnregisterUseCase
 
 class AuthViewModel(
     val loginUseCase : LoginUseCase,

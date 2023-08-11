@@ -1,4 +1,4 @@
-package risyan.app.trustysnails.domain
+package risyan.app.trustysnails.domain.usecase.auth
 
 import risyan.app.trustysnails.basecomponent.BaseUseCase
 import risyan.app.trustysnails.data.remote.api.FbAuth

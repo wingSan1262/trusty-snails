@@ -1,5 +1,6 @@
 package risyan.app.trustysnails.data.remote.api
 
+import com.google.android.gms.auth.api.identity.SignInClient
 import com.google.firebase.auth.AuthResult
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
@@ -11,10 +12,12 @@ interface FbAuth {
     suspend fun loginWithGoogle(idToken: String) : AuthStatus
     suspend fun register(req : FbUserLoginData) : AuthStatus
     suspend fun deleteAccount(req : FbUserLoginData)
+    suspend fun logout()
 }
 
 class FbAuthImpl(
-    val firebaseAuth: FirebaseAuth
+    val firebaseAuth: FirebaseAuth,
+    val googleSignInClient : SignInClient,
 ) : FbAuth {
     override suspend fun login(req: FbUserLoginData): AuthStatus {
         val response = firebaseAuth.signInWithEmailAndPassword(
@@ -32,11 +35,11 @@ class FbAuthImpl(
     override suspend fun loginWithGoogle(idToken: String): AuthStatus {
         val credential = GoogleAuthProvider.getCredential(idToken, null)
         val response = firebaseAuth.signInWithCredential(credential).await()
-        return when (response.user?.isEmailVerified) {
-            true ->
-                AuthStatus.LogInSuccess(FbUserLoginData(response?.user?.email.toString(), ""))
+        return when (response.additionalUserInfo?.isNewUser) {
             false ->
-                AuthStatus.NeedEmailVerification(FbUserLoginData(response?.user?.email.toString(), ""))
+                AuthStatus.LogInSuccess(FbUserLoginData(response?.user?.email.toString(), ""))
+            true ->
+                AuthStatus.NewUserFromGoogle(FbUserLoginData(response?.user?.email.toString(), ""))
             else -> throw IllegalArgumentException("isEmailVerification null")
         }
     }
@@ -58,12 +61,17 @@ class FbAuthImpl(
         firebaseAuth.currentUser!!.delete().await()
     }
 
+    override suspend fun logout() {
+        firebaseAuth.signOut()
+        googleSignInClient.signOut().await()
+    }
+
 }
 
 sealed class AuthStatus {
     data class LogInSuccess(val userData : FbUserLoginData) : AuthStatus()
     data class NeedEmailVerification(val userData : FbUserLoginData) : AuthStatus()
-    data class NeedRegister(val userData : FbUserLoginData) : AuthStatus()
+    data class NewUserFromGoogle(val userData : FbUserLoginData) : AuthStatus()
     data class RegisterSuccess(val userData : FbUserLoginData) : AuthStatus()
     data class WrongLoginData(val userData : FbUserLoginData) : AuthStatus()
 }

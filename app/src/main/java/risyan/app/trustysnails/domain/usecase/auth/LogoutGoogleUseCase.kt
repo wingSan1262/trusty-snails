@@ -12,21 +12,13 @@ import risyan.app.trustysnails.data.remote.api.UserApi
 import risyan.app.trustysnails.data.remote.model.FbUserLoginData
 import risyan.app.trustysnails.data.remote.model.UserSettingDto
 
-class LoginWithGoogleUseCase(
-    val fbApi : FbAuth,
-    val userApi: UserApi,
-
-): BaseUseCase<String, AuthStatus>() {
-    override fun setup(parameter: String) {
+class LogoutGoogleUseCase(
+    val fbApi : FbAuth
+): BaseUseCase<Any?, Any?>() {
+    override fun setup(parameter: Any?) {
         super.setup(parameter)
         execute {
-            val result = fbApi.loginWithGoogle(parameter)
-            launch {
-                if(result is AuthStatus.NewUserFromGoogle){
-                    userApi.setUserData(UserSettingDto())
-                }
-            }
-            return@execute result
+            fbApi.logout()
         }
     }
 }

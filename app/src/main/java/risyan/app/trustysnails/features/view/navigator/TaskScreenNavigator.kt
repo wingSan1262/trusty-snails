@@ -1,4 +1,4 @@
-package com.example.tasklist.feature.navigator
+package risyan.app.trustysnails.features.view.navigator
 
 import androidx.navigation.NavHostController
 import risyan.app.trustysnails.features.view.navigator.*
@@ -13,15 +13,15 @@ class TaskScreenNavigator(
         ){ if(isPop) popUpTo(ONBOARDING_SCREEN) }
     }
 
-    fun navigateToLogin() {
+    fun navigateToSetting(isPop : Boolean = false) {
         nav.navigate(
-            route = LOGIN_SCREEN
-        )
+            route = SETTING_SCREEN
+        ){ if(isPop) popUpTo(SETTING_SCREEN) }
     }
 
-    fun navigateToRegister() {
+    fun navigateToBrowserScreen(isPop : Boolean = false) {
         nav.navigate(
-            route = REGISTER_SCREEN
-        )
+            route = BROWSER_SCREEN
+        ){ if(isPop) popUpTo(BROWSER_SCREEN) }
     }
 }

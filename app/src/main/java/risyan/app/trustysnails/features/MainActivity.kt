@@ -10,10 +10,14 @@ import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.rememberNavController
 import risyan.app.trustysnails.basecomponent.BaseActivity
 import risyan.app.trustysnails.basecomponent.ui.theme.TrustysnailsTheme
 import risyan.app.trustysnails.di.Inject
 import risyan.app.trustysnails.di.Injector
+import risyan.app.trustysnails.features.view.navigator.TaskComposeNavigationHost
+import risyan.app.trustysnails.features.view.navigator.TaskScreenNavigator
 import risyan.app.trustysnails.features.viewmodel.AuthViewModel
 import risyan.app.trustysnails.features.viewmodel.UserViewModel
 
@@ -24,6 +28,8 @@ class MainActivity : BaseActivity() {
     @Inject
     lateinit var userViewModel: UserViewModel
 
+    private lateinit var navController : NavHostController
+
     override fun inject(injector: Injector) { injector.inject(this) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -31,12 +37,10 @@ class MainActivity : BaseActivity() {
         setContent {
             TrustysnailsTheme {
                 // A surface container using the 'background' color from the theme
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colors.background
-                ) {
-                    Greeting("Android")
-                }
+                navController = rememberNavController()
+                TaskComposeNavigationHost(
+                    authViewModel, userViewModel, navController
+                )
             }
         }
     }

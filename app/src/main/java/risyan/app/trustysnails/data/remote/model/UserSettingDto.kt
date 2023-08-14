@@ -11,10 +11,21 @@ data class UserSettingDto(
 ) {
     fun toUserSettingModel(): UserSettingModel {
         return UserSettingModel(
-            browsingMode,
+            BrowsingMode.fromValue(browsingMode ?: ""),
             ArrayList(oneByOneList),
             ArrayList(cleanFilterList),
-            hardSingleBrowser
+            hardSingleBrowser ?: false
         )
+    }
+}
+
+enum class BrowsingMode(val value: String) {
+    CLEAN_MODE("clean_filter"),
+    ONE_BY_ONE("one_by_one");
+
+    companion object {
+        fun fromValue(string: String): BrowsingMode {
+            return values().find { it.value == string } ?: ONE_BY_ONE
+        }
     }
 }

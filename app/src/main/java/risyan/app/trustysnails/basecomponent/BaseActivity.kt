@@ -13,6 +13,7 @@ abstract class BaseActivity : ComponentActivity() {
     abstract fun inject(injector: Injector)
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        inject(injector)
         super.onCreate(savedInstanceState)
     }
 }

@@ -26,27 +26,41 @@ import risyan.app.trustysnails.features.viewmodel.UserViewModel
 
 @SuppressLint("UnusedMaterialScaffoldPaddingParameter")
 fun NavGraphBuilder.BrowserScreen(
-    userViewModel: UserViewModel
+    userViewModel: UserViewModel,
+    navigateToSetting : ()->Unit,
 ){
     composable(route = BROWSER_SCREEN){
-        BrowserScreenContent()
+        BrowserScreenContent(navigateToSetting)
     }
 }
 
 @Composable
 @Preview
 fun SettingPreview(){
-    BrowserScreenContent()
+    BrowserScreenContent{
+
+    }
 }
 
 @Composable
-fun BrowserScreenContent() {
+fun BrowserScreenContent(
+    navigateToSetting : ()->Unit,
+) {
     var webView : WebView? = null
+    var isWebLoding by remember {
+        mutableStateOf(false)
+    }
+    val webClient = object : WebViewClient(){
+        override fun onPageFinished(view: WebView?, url: String?) {
+            super.onPageFinished(view, url)
+            isWebLoding = false
+        }
+    }
     Column {
-        TopBar {
+        TopBar(isWebLoding, navigateToSetting){
             webView?.loadUrl(it)
         }
-        webContentView{
+        webContentView(webClient){
             webView = it
         }
     }
@@ -54,7 +68,9 @@ fun BrowserScreenContent() {
 
 @Composable
 fun TopBar(
-    onUpdateUrl : (String)->Unit
+    isLoading : Boolean,
+    onSetting : ()->Unit,
+    onUpdateUrl : (String)->Unit,
 ) {
     TopAppBar(
         backgroundColor = Color(0xFF1946AE),
@@ -62,7 +78,6 @@ fun TopBar(
         modifier = Modifier.height(72.dp)
     ) {
         var url by remember { mutableStateOf("https://www.google.com") }
-        var isLoading by remember { mutableStateOf(false) }
         val context = LocalContext.current
 
         CommonEditText(
@@ -72,7 +87,6 @@ fun TopBar(
             startingText = url,
             placeholder = "Put URL here",
             onDone = {
-                isLoading = true
                 onUpdateUrl(url)
             },
             Modifier
@@ -87,28 +101,31 @@ fun TopBar(
                 .padding(8.dp)
         )
 
-        Icon(
-            painter = painterResource(id = R.drawable.forbidden), // Replace with your forbidden icon
-            contentDescription = "Forbidden",
-            modifier = Modifier
-                .size(32.dp)
-                .padding(end = 8.dp),
-            tint = Color.White
-        )
+//        Icon(
+//            painter = painterResource(id = R.drawable.forbidden), // Replace with your forbidden icon
+//            contentDescription = "Forbidden",
+//            modifier = Modifier
+//                .size(32.dp)
+//                .padding(end = 8.dp),
+//            tint = Color.White
+//        )
 
         Icon(
-            painter = painterResource(id = R.drawable.burger_icon), // Replace with your burger icon
+            painter = painterResource(id = R.drawable.ic_setting), // Replace with your burger icon
             contentDescription = "Menu",
-            modifier = Modifier.size(32.dp),
+            modifier = Modifier.size(32.dp).clickable {
+                  onSetting()
+            },
             tint = Color.White
         )
 
         if (isLoading) {
-            CircularProgressIndicator(
+            LinearProgressIndicator(
                 color = Color.White,
                 modifier = Modifier
-                    .size(24.dp)
-                    .padding(start = 8.dp)
+                    .fillMaxWidth()
+                    .height(2.dp)
+                    .padding(bottom = 4.dp)
             )
         }
     }
@@ -116,6 +133,7 @@ fun TopBar(
 
 @Composable
 fun webContentView(
+    webViewClient: WebViewClient,
     onWebView : (WebView)->Unit
 ) {
     // You can use AndroidView to integrate WebView
@@ -128,6 +146,7 @@ fun webContentView(
                     ViewGroup.LayoutParams.MATCH_PARENT
                 )
                 webChromeClient = WebChromeClient()
+                this.webViewClient = webViewClient
                 settings.javaScriptEnabled = true
             }.also {
                 onWebView(it)

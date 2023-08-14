@@ -41,7 +41,9 @@ fun TaskComposeNavigationHost(
         SettingScreen(userViewModel){
 
         }
-        BrowserScreen(userViewModel)
+        BrowserScreen(userViewModel){
+            navigator.navigateToSetting(false)
+        }
 
     }
 

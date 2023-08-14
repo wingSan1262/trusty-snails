@@ -3,12 +3,10 @@ package risyan.app.trustysnails.features.view.navigator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.remember
-import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.NavHost
 import androidx.navigation.NavHostController
 import com.google.firebase.auth.FirebaseAuth
 import risyan.app.trustysnails.basecomponent.ResourceEffect
-import risyan.app.trustysnails.basecomponent.showToast
 import risyan.app.trustysnails.data.remote.model.BrowsingMode
 import risyan.app.trustysnails.features.view.screen.BrowserScreen
 import risyan.app.trustysnails.features.view.screens.OnboardingScreen
@@ -29,7 +27,7 @@ fun TaskComposeNavigationHost(
 
     val userSettingState = userViewModel.getSettingData.observeAsState()
 
-    NavHost(nav, startDestination = SPLASH_SCREEN){
+    NavHost(nav, startDestination = Screen.SPLASH_SCREEN){
         SplashScreen{
             userViewModel.getSetting()
         }
@@ -78,7 +76,11 @@ fun TaskComposeNavigationHost(
     }
 }
 
-val SPLASH_SCREEN by lazy { "SPLASH_SCREEN" }
-val ONBOARDING_SCREEN by lazy { "START_SCREEN" }
-val SETTING_SCREEN by lazy { "SETTING_SCREEN" }
-val BROWSER_SCREEN by lazy { "BROWSER_SCREEN" }
+class Screen {
+    companion object{
+        val SPLASH_SCREEN by lazy { "SPLASH_SCREEN" }
+        val START_SCREEN by lazy { "START_SCREEN" }
+        val SETTING_SCREEN by lazy { "SETTING_SCREEN" }
+        val BROWSER_SCREEN by lazy { "BROWSER_SCREEN" }
+    }
+}

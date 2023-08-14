@@ -12,7 +12,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Color.Companion.Blue
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -29,7 +28,7 @@ import risyan.app.trustysnails.basecomponent.ui.theme.BLUE_002989
 import risyan.app.trustysnails.data.remote.model.BrowsingMode
 import risyan.app.trustysnails.domain.model.UserSettingModel
 import risyan.app.trustysnails.features.view.component.DomainListInput
-import risyan.app.trustysnails.features.view.navigator.SETTING_SCREEN
+import risyan.app.trustysnails.features.view.navigator.Screen
 import risyan.app.trustysnails.features.viewmodel.UserViewModel
 
 @SuppressLint("UnusedMaterialScaffoldPaddingParameter")
@@ -37,7 +36,7 @@ fun NavGraphBuilder.SettingScreen(
     userViewModel: UserViewModel,
     finish: ()->Unit
 ){
-    composable(route = SETTING_SCREEN){
+    composable(route = Screen.SETTING_SCREEN){
 
         val saveDataStatus = userViewModel.setSettingData.observeAsState()
         val getUserSettingData = userViewModel.getSettingData.observeAsState()

@@ -1,5 +1,7 @@
 package risyan.app.trustysnails.features.viewmodel
 
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import risyan.app.trustysnails.domain.model.UserSettingModel
 import risyan.app.trustysnails.domain.usecase.user.GetSettingUseCase
@@ -19,4 +21,12 @@ class UserViewModel(
     fun setSetting(req : UserSettingModel){
         setSettingUseCase.setup(req)
     }
+
+    val _currentUrl = MutableLiveData(Pair("https://www.google.com", true))
+    val currentUrl : LiveData<Pair<String, Boolean>> = _currentUrl
+
+    fun updateCurrentUrl(req : Pair<String, Boolean>) {
+        _currentUrl.value = req
+    }
+
 }

@@ -27,7 +27,7 @@ import risyan.app.trustysnails.basecomponent.*
 import risyan.app.trustysnails.basecomponent.ui.theme.BLUE_002989
 import risyan.app.trustysnails.basecomponent.ui.theme.GRAY_757575
 import risyan.app.trustysnails.data.remote.api.AuthStatus
-import risyan.app.trustysnails.features.view.navigator.ONBOARDING_SCREEN
+import risyan.app.trustysnails.features.view.navigator.Screen
 import risyan.app.trustysnails.features.viewmodel.AuthViewModel
 
 @SuppressLint("UnusedMaterialScaffoldPaddingParameter")
@@ -36,7 +36,7 @@ fun NavGraphBuilder.OnboardingScreen(
     onAccountSettingFirst : ()->Unit,
     toBrowser: ()->Unit
 ){
-    composable(route = ONBOARDING_SCREEN){
+    composable(route = Screen.START_SCREEN){
 
         val owner = LocalContext.current
 

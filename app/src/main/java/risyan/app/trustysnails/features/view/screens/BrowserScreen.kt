@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -21,7 +22,7 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import risyan.app.trustysnails.R
 import risyan.app.trustysnails.basecomponent.ui.component.CommonEditText
-import risyan.app.trustysnails.features.view.navigator.BROWSER_SCREEN
+import risyan.app.trustysnails.features.view.navigator.Screen
 import risyan.app.trustysnails.features.viewmodel.UserViewModel
 
 @SuppressLint("UnusedMaterialScaffoldPaddingParameter")
@@ -29,65 +30,70 @@ fun NavGraphBuilder.BrowserScreen(
     userViewModel: UserViewModel,
     navigateToSetting : ()->Unit,
 ){
-    composable(route = BROWSER_SCREEN){
-        BrowserScreenContent(navigateToSetting)
-    }
-}
-
-@Composable
-@Preview
-fun SettingPreview(){
-    BrowserScreenContent{
-
+    composable(route = Screen.BROWSER_SCREEN){
+        BrowserScreenContent(userViewModel, navigateToSetting)
     }
 }
 
 @Composable
 fun BrowserScreenContent(
+    userViewModel: UserViewModel,
     navigateToSetting : ()->Unit,
 ) {
     var webView : WebView? = null
     var isWebLoding by remember {
         mutableStateOf(false)
     }
+
+    val currentUrlState = userViewModel.currentUrl.observeAsState()
+
     val webClient = object : WebViewClient(){
         override fun onPageFinished(view: WebView?, url: String?) {
             super.onPageFinished(view, url)
             isWebLoding = false
+            url?.let{
+                userViewModel.updateCurrentUrl(Pair(it, false))
+            }
         }
     }
     Column {
-        TopBar(isWebLoding, navigateToSetting){
-            webView?.loadUrl(it)
-        }
+        TopBar(userViewModel, isWebLoding, navigateToSetting)
         webContentView(webClient){
             webView = it
+        }
+    }
+
+    LaunchedEffect(currentUrlState.value){
+        currentUrlState.value?.let {
+            if(it.second)
+                webView?.loadUrl(it.first)
         }
     }
 }
 
 @Composable
 fun TopBar(
+    userViewModel: UserViewModel,
     isLoading : Boolean,
     onSetting : ()->Unit,
-    onUpdateUrl : (String)->Unit,
 ) {
     TopAppBar(
         backgroundColor = Color(0xFF1946AE),
         contentPadding = PaddingValues(horizontal = 16.dp),
         modifier = Modifier.height(72.dp)
     ) {
-        var url by remember { mutableStateOf("https://www.google.com") }
-        val context = LocalContext.current
+
+        val currentUrl = userViewModel.currentUrl.observeAsState()
+        var urlTemp = currentUrl.value?.first ?: "https://www.google.com"
 
         CommonEditText(
             onValueChange = { enteredUrl ->
-                url = enteredUrl
+                urlTemp = enteredUrl
             },
-            startingText = url,
+            startingText = currentUrl.value?.first ?: "",
             placeholder = "Put URL here",
             onDone = {
-                onUpdateUrl(url)
+                userViewModel.updateCurrentUrl(Pair(urlTemp, true))
             },
             Modifier
                 .width(0.dp)
@@ -101,21 +107,14 @@ fun TopBar(
                 .padding(8.dp)
         )
 
-//        Icon(
-//            painter = painterResource(id = R.drawable.forbidden), // Replace with your forbidden icon
-//            contentDescription = "Forbidden",
-//            modifier = Modifier
-//                .size(32.dp)
-//                .padding(end = 8.dp),
-//            tint = Color.White
-//        )
-
         Icon(
             painter = painterResource(id = R.drawable.ic_setting), // Replace with your burger icon
             contentDescription = "Menu",
-            modifier = Modifier.size(32.dp).clickable {
-                  onSetting()
-            },
+            modifier = Modifier
+                .size(32.dp)
+                .clickable {
+                    onSetting()
+                },
             tint = Color.White
         )
 

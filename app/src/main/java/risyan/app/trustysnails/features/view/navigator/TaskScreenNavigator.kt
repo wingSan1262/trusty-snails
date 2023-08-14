@@ -1,7 +1,6 @@
 package risyan.app.trustysnails.features.view.navigator
 
 import androidx.navigation.NavHostController
-import risyan.app.trustysnails.features.view.navigator.*
 
 class TaskScreenNavigator(
     val nav : NavHostController
@@ -9,19 +8,19 @@ class TaskScreenNavigator(
 
     fun navigateToOnboarding (isPop : Boolean = false) {
         nav.navigate(
-            route = ONBOARDING_SCREEN
-        ){ if(isPop) popUpTo(ONBOARDING_SCREEN) }
+            route = Screen.START_SCREEN
+        ){ if(isPop) popUpTo(Screen.START_SCREEN) }
     }
 
     fun navigateToSetting(isPop : Boolean = false) {
         nav.navigate(
-            route = SETTING_SCREEN
-        ){ if(isPop) popUpTo(SETTING_SCREEN) }
+            route = Screen.SETTING_SCREEN
+        ){ if(isPop) popUpTo(Screen.SETTING_SCREEN) }
     }
 
     fun navigateToBrowserScreen(isPop : Boolean = false) {
         nav.navigate(
-            route = BROWSER_SCREEN
-        ){ if(isPop) popUpTo(BROWSER_SCREEN) }
+            route = Screen.BROWSER_SCREEN
+        ){ if(isPop) popUpTo(Screen.BROWSER_SCREEN) }
     }
 }

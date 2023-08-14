@@ -18,13 +18,13 @@ import kotlinx.coroutines.delay
 import risyan.app.trustysnails.R
 import risyan.app.trustysnails.basecomponent.ui.theme.GRAY_CDD5EA
 import risyan.app.trustysnails.basecomponent.ui.theme.LIGHT_BLUE_0033AA
-import risyan.app.trustysnails.features.view.navigator.SPLASH_SCREEN
+import risyan.app.trustysnails.features.view.navigator.Screen
 
 @SuppressLint("UnusedMaterialScaffoldPaddingParameter")
 fun NavGraphBuilder.SplashScreen(
     navigateToNextScreen: () -> Unit
 ){
-    composable(route = SPLASH_SCREEN){
+    composable(route = Screen.SPLASH_SCREEN){
         SplashContent(navigateToNextScreen)
     }
 }
@@ -34,7 +34,7 @@ fun SplashContent(
     navigateToNextScreen: () -> Unit
 ){
     LaunchedEffect(true) {
-        delay(3000)
+        delay(1000)
         navigateToNextScreen()
     }
 

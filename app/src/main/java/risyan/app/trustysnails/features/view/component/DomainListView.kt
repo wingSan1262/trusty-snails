@@ -20,12 +20,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import risyan.app.trustysnails.R
+import risyan.app.trustysnails.basecomponent.checkLinkValidity
+import risyan.app.trustysnails.basecomponent.recheckValidityAndTransform
+import risyan.app.trustysnails.basecomponent.showToast
 import risyan.app.trustysnails.basecomponent.ui.component.CommonEditText
 
 
@@ -37,6 +41,7 @@ fun DomainListInput(
 ) {
     scope.item {
 
+        val context = LocalContext.current
         Text(
             text = "Masukan list domain yang ingin kamu akses",
             fontWeight = FontWeight.Normal,
@@ -63,8 +68,16 @@ fun DomainListInput(
                             startingText = value,
                             placeholder = "Enter domain",
                             onDone = {
-                                onDomainChanged(ArrayList(domainStateList).apply {
-                                    this[index] = it})
+                                if(it.isEmpty()) return@CommonEditText
+                                it.recheckValidityAndTransform().let{ checkString ->
+                                    if(checkString.checkLinkValidity())
+                                        onDomainChanged(ArrayList(domainStateList).apply {
+                                            this[index] = checkString
+                                        })
+                                    else
+                                        context.showToast("Invalid add subdomain (ex:www) or tld (ex.com)")
+                                }
+
                             }
                         )
                     },

@@ -17,7 +17,13 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
@@ -28,6 +34,8 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.Transformations
@@ -185,32 +193,45 @@ fun ComponentActivity.doGoogleOneTapSignIn(
         }
 }
 
-
-
 @Composable
 fun GifDisplay(
-    gifResource : Int,
-    size : Size,
+    gifResource: Int,
+    size: Size,
     modifier: Modifier
 ) {
     val context = LocalContext.current
     val loader = ImageLoader(context).newBuilder()
-        .components(fun ComponentRegistry.Builder.() {
+        .components {
             if (SDK_INT >= 28) {
                 add(ImageDecoderDecoder.Factory())
             } else {
                 add(GifDecoder.Factory())
             }
-        }).build()
-    Image(
-        painter = rememberAsyncImagePainter(
-            ImageRequest.Builder(context).data(data = gifResource).apply(block = {
-                size(size)
-            }).build(), imageLoader = loader
-        ),
-        contentDescription = null,
-        modifier = modifier,
+        }.build()
+
+    val animationSpec = spring<IntOffset>(
+        dampingRatio = Spring.DampingRatioMediumBouncy,
+        stiffness = Spring.StiffnessLow
     )
+
+    AnimatedVisibility(
+        visible = true,
+        enter = slideInVertically(
+            initialOffsetY = { it },
+            animationSpec = animationSpec
+        ) + fadeIn(initialAlpha = 0.3f),
+        modifier = modifier
+    ) {
+        Image(
+            painter = rememberAsyncImagePainter(
+                ImageRequest.Builder(context).data(data = gifResource).apply {
+                    size(size)
+                }.build(), imageLoader = loader
+            ),
+            contentDescription = null,
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
 }
 
 fun ComponentActivity.createWebViewWithDefaults(
@@ -242,6 +263,28 @@ fun ComponentActivity.createWebViewWithDefaults(
     }
 }
 
+fun String.extractDomain(): String {
+    val startIndex = this.indexOf("://") + 3
+    val endIndex = this.indexOf("/", startIndex)
+    return if (endIndex != -1) {
+        this.substring(startIndex, endIndex)
+    } else {
+        this.substring(startIndex)
+    }
+}
+
+fun String.checkLinkValidity(): Boolean {
+    val tldPattern = """\.(?:[a-zA-Z]{2,}|[0-9]{1,3})$""".toRegex()
+    val pattern = """^(?:[a-zA-Z0-9\-]+\.)+[a-zA-Z]{2,}(?:\/.*)?$""".toRegex()
+
+    val domain = this.extractDomain()
+        .removePrefix("http://")
+        .removePrefix("https://")
+
+    return pattern.matches(domain) && tldPattern.find(domain)?.value != null && domain.count { it == '.' } >= 2
+}
+
+
 fun String.recheckValidityAndTransform(): String {
     val trimmed = trim()
 
@@ -257,8 +300,8 @@ fun String.recheckValidityAndTransform(): String {
     }
 
     // Check if the input ends with ".com", and add if not present
-    val finalValue = if (!trimmed.endsWith(".com")) {
-        "$trimmed.com"
+    val finalValue = if (trimmed.count { it == '.' } == 0) {
+        "www.$trimmed.com"
     } else {
         trimmed
     }

@@ -19,7 +19,9 @@ class UserViewModel(
 
     val setSettingData = setSettingUseCase.currentData
     fun setSetting(req : UserSettingModel){
-        setSettingUseCase.setup(req)
+        setSettingUseCase.setup(req.apply {
+            validityTransform()
+        })
     }
 
     val _currentUrl = MutableLiveData("https://www.google.com")

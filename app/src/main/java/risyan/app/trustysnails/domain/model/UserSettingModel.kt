@@ -18,4 +18,25 @@ data class UserSettingModel(
             hardSingleBrowser
         )
     }
+
+    fun validityTransform(){
+        cleanFilterList = ArrayList(cleanFilterList.filter { !it.isEmpty() })
+        oneByOneList = ArrayList(oneByOneList.filter { !it.isEmpty() })
+    }
+}
+
+fun List<String>.getOneByOneIsSafe(link : String): Boolean {
+    forEach {
+        if(it.contains(link, true) || link.contains(it, true))
+            return true
+    }
+    return false
+}
+
+fun List<String>.getCleanIsSafe(link : String): Boolean {
+    forEach {
+        if(it.contains(link, true) || link.contains(it, true))
+            return false
+    }
+    return true
 }

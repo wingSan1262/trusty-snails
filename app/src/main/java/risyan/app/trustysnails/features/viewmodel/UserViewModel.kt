@@ -22,11 +22,12 @@ class UserViewModel(
         setSettingUseCase.setup(req)
     }
 
-    val _currentUrl = MutableLiveData(Pair("https://www.google.com", true))
-    val currentUrl : LiveData<Pair<String, Boolean>> = _currentUrl
+    val _currentUrl = MutableLiveData("https://www.google.com")
+    val currentUrl : LiveData<String> = _currentUrl
+    fun updateCurrentUrl(req : String) { _currentUrl.value = req }
 
-    fun updateCurrentUrl(req : Pair<String, Boolean>) {
-        _currentUrl.value = req
-    }
+    val _isWebLoading = MutableLiveData(false)
+    val isWebLoading : LiveData<Boolean> = _isWebLoading
+    fun setWebLoading(isLoading : Boolean) { _isWebLoading.value = isLoading }
 
 }

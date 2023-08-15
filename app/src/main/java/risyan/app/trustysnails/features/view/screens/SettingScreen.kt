@@ -102,7 +102,8 @@ fun SettingContent(
             )
 
             GifDisplay(
-                gifResource = R.drawable.clean_mode, // todo add resource change
+                gifResource = if(userSettingState.browsingMode == BrowsingMode.CLEAN_MODE)
+                    R.drawable.clean_mode else R.drawable.one_by_one,
                 size = Size(108, 108),
                 modifier = Modifier.size(108.dp)
             )
@@ -133,7 +134,7 @@ fun SettingContent(
 
         DomainListInput(
             this,
-            domains = if(userSettingState.browsingMode == BrowsingMode.CLEAN_MODE) userSettingState.cleanFilterList
+            domainStateList = if(userSettingState.browsingMode == BrowsingMode.CLEAN_MODE) userSettingState.cleanFilterList
                 else userSettingState.oneByOneList, // Pass your list of domains here
             onDomainChanged = {
                 userSettingState = if(userSettingState.browsingMode == BrowsingMode.CLEAN_MODE)

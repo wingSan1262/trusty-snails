@@ -32,18 +32,10 @@ import risyan.app.trustysnails.basecomponent.ui.component.CommonEditText
 @OptIn(ExperimentalMaterialApi::class)
 fun DomainListInput(
     scope : LazyListScope,
-    domains: List<String> = listOf(),
+    domainStateList: List<String> = listOf(),
     onDomainChanged: (List<String>) -> Unit
 ) {
     scope.item {
-
-        val domainStateList  = remember {
-            mutableStateListOf<String>().apply { addAll(domains) }
-        }
-
-        LaunchedEffect(domainStateList.toList()){
-            onDomainChanged(domainStateList)
-        }
 
         Text(
             text = "Masukan list domain yang ingin kamu akses",
@@ -58,21 +50,22 @@ fun DomainListInput(
             domainStateList.forEachIndexed { index,value ->
                 SwipeToDismiss(
                     state = rememberDismissState { direction ->
-                        if (direction == DismissValue.DismissedToEnd) {
-                            domainStateList.removeAt(index)
+                        if (direction == DismissValue.DismissedToStart) {
+                            onDomainChanged(ArrayList(domainStateList).apply {removeAt(index)})
                             return@rememberDismissState true
                         }
                         return@rememberDismissState false
                     },
                     modifier = Modifier.padding(8.dp),
-                    directions = setOf(DismissDirection.StartToEnd),
+                    directions = setOf(DismissDirection.EndToStart),
                     dismissContent = {
                         CommonEditText(
-                            onValueChange = { value ->
-                                domainStateList[index] = value
-                            },
                             startingText = value,
                             placeholder = "Enter domain",
+                            onDone = {
+                                onDomainChanged(ArrayList(domainStateList).apply {
+                                    this[index] = it})
+                            }
                         )
                     },
                     background = {}
@@ -93,7 +86,8 @@ fun DomainListInput(
                 contentDescription = null,
                 modifier = Modifier
                     .clickable {
-                        domainStateList.add("")
+                        onDomainChanged(
+                            ArrayList(domainStateList).apply {add("")})
                     }
                     .size(20.dp)
             )

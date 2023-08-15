@@ -4,7 +4,12 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.content.IntentSender
+import android.graphics.Bitmap
 import android.os.Build.VERSION.SDK_INT
+import android.view.ViewGroup
+import android.webkit.WebChromeClient
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.ManagedActivityResultLauncher
@@ -18,10 +23,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.Transformations
 import coil.ComponentRegistry
 import coil.ImageLoader
 import coil.compose.rememberAsyncImagePainter
@@ -202,4 +211,86 @@ fun GifDisplay(
         contentDescription = null,
         modifier = modifier,
     )
+}
+
+fun ComponentActivity.createWebViewWithDefaults(
+    onPageLoadFinished: () -> Unit = {},
+    onPageStartLoad: (url: String) -> Unit = {},
+): WebView {
+    val webViewClient = object : WebViewClient() {
+        override fun onPageFinished(view: WebView?, url: String?) {
+            super.onPageFinished(view, url)
+            onPageLoadFinished()
+        }
+
+        override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
+            super.onPageStarted(view, url, favicon)
+            url?.let {
+                onPageStartLoad(it)
+            }
+        }
+    }
+
+    return WebView(this).apply {
+        layoutParams = ViewGroup.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.MATCH_PARENT
+        )
+        webChromeClient = WebChromeClient()
+        this.webViewClient = webViewClient
+        settings.javaScriptEnabled = true
+    }
+}
+
+fun String.recheckValidityAndTransform(): String {
+    val trimmed = trim()
+
+    if (trimmed.isEmpty()) {
+        return ""
+    }
+
+    // Check if the input starts with "http://" or "https://", and add if not present
+    val httpPrefix = if (!trimmed.startsWith("http://") && !trimmed.startsWith("https://")) {
+        "https://"
+    } else {
+        ""
+    }
+
+    // Check if the input ends with ".com", and add if not present
+    val finalValue = if (!trimmed.endsWith(".com")) {
+        "$trimmed.com"
+    } else {
+        trimmed
+    }
+
+    return "$httpPrefix$finalValue"
+}
+
+@Composable
+fun <T, K> MediatorStateResource(
+    vararg liveData: LiveData<Event<ResourceState<T>>>,
+    mapper: (List<ResourceState<T>>) -> ResourceState<K>
+): State<ResourceState<K>> {
+
+    val states = liveData.map { state ->
+        state.observeAsState().value?.nonFilteredContent()
+    }
+
+    return derivedStateOf {
+        mapper(states.requireNoNulls())
+    }
+}
+
+fun <T, K> ResourceState<T>.mapTo(
+    mapper: (T) -> K
+): ResourceState<K>{
+    return when(this){
+        is ResourceState.Success -> ResourceState.Success(mapper(this.body))
+        is ResourceState.Failure ->
+            ResourceState.Failure(
+                exception,
+                body = if(this.body == null) body else mapper(body)
+            )
+    }
+
 }

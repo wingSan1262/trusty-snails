@@ -37,12 +37,12 @@ fun TaskComposeNavigationHost(
             userViewModel.getSetting()
         }
         SettingScreen(userViewModel){
-
+            navigator.navigateToBrowserScreen(true)
         }
         BrowserScreen(userViewModel){
-            navigator.navigateToSetting(false)
+            if(userViewModel.isOffline.value == false)
+                navigator.navigateToSetting(false)
         }
-
     }
 
     // TODO bad !! tight coupling . . . not reactive . . .
@@ -69,6 +69,14 @@ fun TaskComposeNavigationHost(
             }
         }
     ){ data, owner ->
+
+        if(data.exception.message.toString()
+                .contains("client is offline", true)){
+            userViewModel.setOffline(true)
+            navigator.navigateToBrowserScreen(true)
+            return@ResourceEffect
+        }
+
         if(FirebaseAuth.getInstance().currentUser == null)
             navigator.navigateToOnboarding(true)
         else

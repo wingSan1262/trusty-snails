@@ -12,6 +12,11 @@ class UserViewModel(
     val setSettingUseCase: SetSettingUseCase
 ): ViewModel() {
 
+    val _isOffline  = MutableLiveData(false)
+    val isOffline : LiveData<Boolean> = _isOffline
+    fun setOffline(isOffline : Boolean){
+        _isOffline.value = isOffline}
+
     val getSettingData = getSettingUseCase.currentData
     fun getSetting(){
         getSettingUseCase.setup(null)

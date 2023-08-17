@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
 import androidx.compose.material.Text
@@ -84,6 +85,7 @@ fun UrlNavigatingEditText(
     onNewLink: (String) -> Unit,
     valueText: String,
     placeholder: String,
+    isLoading: Boolean = false,
     modifier: Modifier = Modifier
         .fillMaxWidth()
         .padding(4.dp)
@@ -112,7 +114,9 @@ fun UrlNavigatingEditText(
             value = if(isEditting) edittingValue else valueText,
             onValueChange = { edittingValue = it },
             decorationBox = { innerTextField ->
-                if (valueText.isEmpty()) {
+                if (isEditting && edittingValue.isEmpty()) {
+                    Text(placeholder, color = Color.Gray)
+                } else if (!isEditting && valueText.isEmpty()){
                     Text(placeholder, color = Color.Gray)
                 }
                 innerTextField()
@@ -144,7 +148,17 @@ fun UrlNavigatingEditText(
             ) {
                 Icon(imageVector = Icons.Default.Clear, contentDescription = null, tint = Color.Gray)
             }
+            return@Row
         }
+
+        if(isLoading)
+            CircularProgressIndicator(
+                Modifier
+                    .size(16.dp)
+                    .padding(start = 4.dp, top = 2.dp),
+                color = Color.Gray,
+                strokeWidth = 3.dp
+            )
     }
 
 }

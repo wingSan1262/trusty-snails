@@ -34,6 +34,10 @@ class MainActivity : BaseActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        val intentData = intent.data
+        if (intentData != null) userViewModel.updateCurrentUrl(intentData.toString())
+
         setContent {
             TrustysnailsTheme {
                 // A surface container using the 'background' color from the theme

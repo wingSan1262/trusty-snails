@@ -1,26 +1,19 @@
+@file:OptIn(ExperimentalComposeUiApi::class, ExperimentalComposeUiApi::class)
+
 package risyan.app.trustysnails.features.view.component
 
-import android.graphics.Path
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -28,20 +21,25 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import risyan.app.trustysnails.R
 import risyan.app.trustysnails.basecomponent.checkLinkValidity
+import risyan.app.trustysnails.basecomponent.isTimeValid
 import risyan.app.trustysnails.basecomponent.recheckValidityAndTransform
 import risyan.app.trustysnails.basecomponent.showToast
-import risyan.app.trustysnails.basecomponent.ui.component.CommonEditText
+import risyan.app.trustysnails.basecomponent.ui.component.UrlNavigatingEditText
+import risyan.app.trustysnails.data.remote.model.BrowsingMode
 
 
 @OptIn(ExperimentalMaterialApi::class)
 fun DomainListInput(
-    scope : LazyListScope,
+    scope: LazyListScope,
+    browsingMode: BrowsingMode,
     domainStateList: List<String> = listOf(),
     onDomainChanged: (List<String>) -> Unit
 ) {
     scope.item {
 
         val context = LocalContext.current
+        val keyboard = LocalSoftwareKeyboardController.current
+
         Text(
             text = "Masukan list domain yang ingin kamu akses",
             fontWeight = FontWeight.Normal,
@@ -56,6 +54,11 @@ fun DomainListInput(
                 SwipeToDismiss(
                     state = rememberDismissState { direction ->
                         if (direction == DismissValue.DismissedToStart) {
+                            if(browsingMode == BrowsingMode.ONE_BY_ONE && !isTimeValid()){
+                                context.showToast("Penghapusan tersedia pada 15 menit pertama " +
+                                        "setiap jam dengan kelipatan 3 (mis: 12, 21, dll).")
+                                return@rememberDismissState false
+                            }
                             onDomainChanged(ArrayList(domainStateList).apply {removeAt(index)})
                             return@rememberDismissState true
                         }
@@ -64,11 +67,11 @@ fun DomainListInput(
                     modifier = Modifier.padding(8.dp),
                     directions = setOf(DismissDirection.EndToStart),
                     dismissContent = {
-                        CommonEditText(
-                            startingText = value,
+                        UrlNavigatingEditText(
+                            valueText = value,
                             placeholder = "Enter domain",
-                            onDone = {
-                                if(it.isEmpty()) return@CommonEditText
+                            onNewLink = {
+                                if(it.isEmpty()) return@UrlNavigatingEditText
                                 it.recheckValidityAndTransform().let{ checkString ->
                                     if(checkString.checkLinkValidity())
                                         onDomainChanged(ArrayList(domainStateList).apply {
@@ -77,7 +80,7 @@ fun DomainListInput(
                                     else
                                         context.showToast("Invalid add subdomain (ex:www) or tld (ex.com)")
                                 }
-
+                                keyboard?.hide()
                             }
                         )
                     },
@@ -99,6 +102,11 @@ fun DomainListInput(
                 contentDescription = null,
                 modifier = Modifier
                     .clickable {
+                        if(browsingMode == BrowsingMode.CLEAN_MODE && !isTimeValid()){
+                            context.showToast("Penyimpanan tersedia pada 15 menit pertama " +
+                                    "setiap jam dengan kelipatan 3 (mis: 12, 21, dll).")
+                            return@clickable
+                        }
                         onDomainChanged(
                             ArrayList(domainStateList).apply {add("")})
                     }
@@ -108,17 +116,4 @@ fun DomainListInput(
             Text(text = "More next", fontWeight = FontWeight.Bold)
         }
     }
-}
-
-@Preview
-@Composable
-fun Preview(){
-    LazyColumn(content = {
-        DomainListInput(
-            this,
-            listOf("awdinawid", "", "awdinawid", "awdinawid"),
-            {}
-        )
-    })
-
 }

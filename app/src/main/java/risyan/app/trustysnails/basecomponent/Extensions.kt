@@ -1,15 +1,16 @@
 package risyan.app.trustysnails.basecomponent
 
 import android.app.Activity
+import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
+import android.content.Intent.*
 import android.content.IntentSender
 import android.graphics.Bitmap
+import android.net.Uri
 import android.os.Build.VERSION.SDK_INT
 import android.view.ViewGroup
-import android.webkit.WebChromeClient
-import android.webkit.WebView
-import android.webkit.WebViewClient
+import android.webkit.*
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.ManagedActivityResultLauncher
@@ -54,6 +55,7 @@ import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import kotlinx.coroutines.CoroutineScope
 import risyan.app.trustysnails.R
+import java.util.*
 
 fun Context.showToast(msg : String){
     Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
@@ -237,11 +239,41 @@ fun GifDisplay(
 fun ComponentActivity.createWebViewWithDefaults(
     onPageLoadFinished: () -> Unit = {},
     onPageStartLoad: (url: String) -> Unit = {},
+    onOffline : ()->Unit = {}
 ): WebView {
     val webViewClient = object : WebViewClient() {
         override fun onPageFinished(view: WebView?, url: String?) {
             super.onPageFinished(view, url)
             onPageLoadFinished()
+        }
+
+        override fun onReceivedError(
+            view: WebView?,
+            errorCode: Int,
+            description: String?,
+            failingUrl: String?
+        ) {
+            super.onReceivedError(view, errorCode, description, failingUrl)
+            if (errorCode == ERROR_HOST_LOOKUP || errorCode == ERROR_CONNECT || errorCode == ERROR_TIMEOUT)
+                onOffline()
+        }
+        override fun shouldOverrideUrlLoading(
+            view: WebView?,
+            request: WebResourceRequest?
+        ): Boolean {
+            val url = request?.url.toString()
+            try {
+                val intent = Intent(ACTION_VIEW, Uri.parse(url)).apply {
+                    // The URL should either launch directly in a non-browser app (if it's
+                    // the default), or in the disambiguation dialog.
+                    addCategory(CATEGORY_BROWSABLE)
+                    flags = FLAG_ACTIVITY_NEW_TASK or FLAG_ACTIVITY_REQUIRE_NON_BROWSER
+                }
+                startActivity(intent)
+            } catch (e: ActivityNotFoundException) {
+
+            }
+            return super.shouldOverrideUrlLoading(view, request)
         }
 
         override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
@@ -257,9 +289,14 @@ fun ComponentActivity.createWebViewWithDefaults(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.MATCH_PARENT
         )
+
         webChromeClient = WebChromeClient()
         this.webViewClient = webViewClient
         settings.javaScriptEnabled = true
+        settings.domStorageEnabled = true
+        settings.cacheMode = WebSettings.LOAD_DEFAULT
+        CookieManager.getInstance().setAcceptThirdPartyCookies(this, true);
+        CookieManager.getInstance().setAcceptCookie(true);
     }
 }
 
@@ -336,4 +373,12 @@ fun <T, K> ResourceState<T>.mapTo(
             )
     }
 
+
+}
+fun isTimeValid(): Boolean {
+    val currentTime = Calendar.getInstance()
+    val hour = currentTime.get(Calendar.HOUR_OF_DAY)
+    val minute = currentTime.get(Calendar.MINUTE)
+
+    return hour % 3 == 0 && minute >= 0 && minute <= 15
 }

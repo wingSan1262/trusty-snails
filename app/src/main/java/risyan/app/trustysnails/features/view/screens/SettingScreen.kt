@@ -12,6 +12,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Color.Companion.Blue
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -21,9 +22,7 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import coil.size.Size
 import risyan.app.trustysnails.R
-import risyan.app.trustysnails.basecomponent.GifDisplay
-import risyan.app.trustysnails.basecomponent.ResourceEffect
-import risyan.app.trustysnails.basecomponent.showToast
+import risyan.app.trustysnails.basecomponent.*
 import risyan.app.trustysnails.basecomponent.ui.theme.BLUE_002989
 import risyan.app.trustysnails.data.remote.model.BrowsingMode
 import risyan.app.trustysnails.domain.model.UserSettingModel
@@ -55,12 +54,12 @@ fun NavGraphBuilder.SettingScreen(
                 })
         }
 
-        ResourceEffect(saveDataStatus, {
+        EventEffect(saveDataStatus, {
             userViewModel.getSetting();finish()
         }){ data, owner ->
-            isLoading = false; owner.showToast(data.exception.message.toString())}
+            isLoading = false; owner .showToast(data.exception.message.toString())}
 
-        ResourceEffect(getUserSettingData,{
+        EventEffect(getUserSettingData,{
             userSetting = it.body; isLoading = false
         }){data, owner ->
             userSetting = UserSettingModel()
@@ -82,6 +81,7 @@ fun SettingContent(
     isLoading : Boolean,
     saveSetting : (UserSettingModel)->Unit
 ){
+    val context = LocalContext.current
     var userSettingState by remember {
         mutableStateOf(userSetting)
     }
@@ -134,18 +134,21 @@ fun SettingContent(
 
         DomainListInput(
             this,
+            userSettingState.browsingMode,
             domainStateList = if(userSettingState.browsingMode == BrowsingMode.CLEAN_MODE) userSettingState.cleanFilterList
-                else userSettingState.oneByOneList, // Pass your list of domains here
-            onDomainChanged = {
-                userSettingState = if(userSettingState.browsingMode == BrowsingMode.CLEAN_MODE)
-                    userSettingState.copy(cleanFilterList = ArrayList(it))
-                else userSettingState.copy(oneByOneList = ArrayList(it))
-            },
-        )
+                else userSettingState.oneByOneList,
+        ) // Pass your list of domains here
+        {
+            userSettingState = if (userSettingState.browsingMode == BrowsingMode.CLEAN_MODE)
+                userSettingState.copy(cleanFilterList = ArrayList(it))
+            else userSettingState.copy(oneByOneList = ArrayList(it))
+        }
 
         item {
             Button(
-                onClick = { saveSetting(userSettingState) },
+                onClick = {
+                    saveSetting(userSettingState)
+                },
                 shape = RoundedCornerShape(8.dp),
                 colors = ButtonDefaults.buttonColors(backgroundColor = BLUE_002989),
                 modifier = Modifier

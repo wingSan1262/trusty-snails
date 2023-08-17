@@ -1,6 +1,7 @@
 package risyan.app.trustysnails.domain.model
 
 import com.google.gson.annotations.SerializedName
+import risyan.app.trustysnails.basecomponent.extractDomain
 import risyan.app.trustysnails.data.remote.model.BrowsingMode
 import risyan.app.trustysnails.data.remote.model.UserSettingDto
 
@@ -26,16 +27,22 @@ data class UserSettingModel(
 }
 
 fun List<String>.getOneByOneIsSafe(link : String): Boolean {
+    val targetDomain = link.extractDomain()
     forEach {
-        if(it.contains(link, true) || link.contains(it, true))
+        if(
+            it.contains(targetDomain, true) ||
+            targetDomain.contains(it, true))
             return true
     }
     return false
 }
 
 fun List<String>.getCleanIsSafe(link : String): Boolean {
+    val targetDomain = link.extractDomain()
     forEach {
-        if(it.contains(link, true) || link.contains(it, true))
+        if(
+            it.contains(targetDomain, true) ||
+            targetDomain.contains(it, true))
             return false
     }
     return true

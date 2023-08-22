@@ -39,7 +39,9 @@ fun NavGraphBuilder.SettingScreen(
 
         val saveDataStatus = userViewModel.setSettingData.observeAsState()
         val getUserSettingData = userViewModel.getSettingData.observeAsState()
-        var userSetting : UserSettingModel? by remember { mutableStateOf(null) }
+        var userSetting : UserSettingModel? by remember { mutableStateOf(
+            userViewModel.getSettingData.value?.getBareContent()
+        ) }
         var isLoading by remember {
             mutableStateOf(false)
         }

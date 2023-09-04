@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "259359098883",
+    "firebase_url": "https://trusty-snails-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "trusty-snails",
+    "storage_bucket": "trusty-snails.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:259359098883:android:7e0272eeb6e6a981616636",
+        "android_client_info": {
+          "package_name": "risyan.app.trustysnails"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "259359098883-4rta1omc1ufnejalo3kdobo1o3hj5bbe.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDwzud4I9OZSHBfrUCTpMjyHin_KFJOwaw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "259359098883-4rta1omc1ufnejalo3kdobo1o3hj5bbe.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

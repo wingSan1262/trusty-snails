@@ -1,14 +1,19 @@
 package risyan.app.trustysnails.basecomponent
 
+import android.Manifest
 import android.app.Activity
+import android.app.DownloadManager
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.content.Intent.*
-import android.content.IntentSender
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.net.Uri
+import android.os.Build
 import android.os.Build.VERSION.SDK_INT
+import android.os.Environment
+import android.util.Base64
 import android.view.ViewGroup
 import android.webkit.*
 import android.widget.Toast
@@ -25,8 +30,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
@@ -34,13 +37,9 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.IntSize
-import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.LiveData
-import androidx.lifecycle.Transformations
-import coil.ComponentRegistry
 import coil.ImageLoader
 import coil.compose.rememberAsyncImagePainter
 import coil.decode.GifDecoder
@@ -49,13 +48,10 @@ import coil.request.ImageRequest
 import coil.size.Size
 import com.google.android.gms.auth.api.identity.BeginSignInRequest
 import com.google.android.gms.auth.api.identity.Identity
-import com.google.android.gms.auth.api.identity.SignInClient
-import com.google.android.gms.auth.api.signin.GoogleSignIn
-import com.google.android.gms.auth.api.signin.GoogleSignInClient
-import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import kotlinx.coroutines.CoroutineScope
-import risyan.app.trustysnails.R
+import java.io.File
 import java.util.*
+
 
 fun Context.showToast(msg : String){
     Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
@@ -236,11 +232,29 @@ fun GifDisplay(
     }
 }
 
+fun getFileExtension(url: String): String {
+    val lastSlashIndex = url.lastIndexOf('/')
+    val lastDotIndex = url.lastIndexOf('.')
+    if (lastDotIndex != -1 && lastDotIndex > lastSlashIndex) {
+        return url.substring(lastDotIndex)
+    }
+    return ""
+}
+
 fun ComponentActivity.createWebViewWithDefaults(
     onPageLoadFinished: () -> Unit = {},
     onPageStartLoad: (url: String) -> Unit = {},
-    onOffline : ()->Unit = {}
+    onOffline : ()->Unit = {},
+    onLinkContextMenu: (fileLink: String, mimeType: String)->Unit = { s: String, s1: String -> },
+    download: (fileLink: String, mimeType: String)->Unit = { s: String, s1: String -> }
 ): WebView {
+
+
+    fun isDownloadableUrl(url: String): Boolean {
+        val downloadableExtensions = listOf(".pdf", ".zip", ".doc", ".xls", ".png", ".jpg", ".jpeg")
+        return downloadableExtensions.any { url.endsWith(it, ignoreCase = true) }
+    }
+
     val webViewClient = object : WebViewClient() {
         override fun onPageFinished(view: WebView?, url: String?) {
             super.onPageFinished(view, url)
@@ -261,11 +275,16 @@ fun ComponentActivity.createWebViewWithDefaults(
             view: WebView?,
             request: WebResourceRequest?
         ): Boolean {
+
             val url = request?.url.toString()
+
+            if (isDownloadableUrl(url)) {
+                download(url,"")
+                return true
+            }
+
             try {
                 val intent = Intent(ACTION_VIEW, Uri.parse(url)).apply {
-                    // The URL should either launch directly in a non-browser app (if it's
-                    // the default), or in the disambiguation dialog.
                     addCategory(CATEGORY_BROWSABLE)
                     flags = FLAG_ACTIVITY_NEW_TASK or FLAG_ACTIVITY_REQUIRE_NON_BROWSER
                 }
@@ -278,6 +297,19 @@ fun ComponentActivity.createWebViewWithDefaults(
 
         override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
             super.onPageStarted(view, url, favicon)
+            view?.setOnLongClickListener {
+                val result = view.hitTestResult
+                val urlView = result.extra ?: ""
+                if(getFileExtension(urlView).isNotEmpty()){
+                    onLinkContextMenu(urlView,"")
+                    return@setOnLongClickListener true
+                }else if(urlView.startsWith("data:")){
+                    val mimeType = urlView.substringAfter(":").substringBefore(";")
+                    onLinkContextMenu(urlView,mimeType)
+                    return@setOnLongClickListener true
+                }
+                false
+            }
             url?.let {
                 onPageStartLoad(it)
             }
@@ -382,3 +414,70 @@ fun isTimeValid(): Boolean {
 
     return hour % 3 == 0 && minute >= 0 && minute <= 15
 }
+
+fun Context.downloadFile(fileUrl: String) {
+    val downloadManager = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+
+    // Get the file extension from the URL
+    val fileExtension = getFileExtension(fileUrl)
+
+    val request = DownloadManager.Request(Uri.parse(fileUrl))
+        .setTitle("Downloading File")
+        .setDescription("Downloading file from the web")
+        .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+        .setDestinationInExternalPublicDir(
+            Environment.DIRECTORY_DOWNLOADS,
+            "downloaded_file$fileExtension" // Use the extracted extension
+        )
+
+    downloadManager.enqueue(request)
+}
+
+private fun getExtensionFromMimeType(mimeType: String): String? {
+    val extension = MimeTypeMap.getSingleton().getExtensionFromMimeType(mimeType)
+    return extension?.lowercase(Locale.ROOT)
+}
+
+fun Context.downloadBase64(urlView: String, mimeType: String) {
+    val fileExtension = getExtensionFromMimeType(mimeType)
+
+    if (!fileExtension.isNullOrEmpty()) {
+        val fileName = "downloaded_file.$fileExtension"
+        val decodedData = Base64.decode(urlView.substringAfter(","), Base64.DEFAULT)
+
+        // Save the decoded data to a file
+        val file = File(getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), fileName)
+        file.writeBytes(decodedData)
+
+        // Use DownloadManager to download the file
+        val downloadManager = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+        val request = DownloadManager.Request(Uri.fromFile(file))
+            .setTitle(fileName)
+            .setMimeType(mimeType)
+            .setDescription("Downloading...")
+            .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+            .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName)
+        downloadManager.enqueue(request)
+    } else {
+        // Handle invalid file extension
+        Toast.makeText(this, "Invalid file extension", Toast.LENGTH_SHORT).show()
+    }
+}
+
+fun ComponentActivity.isPermissionStorageOk(): Boolean {
+    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+        Environment.isExternalStorageManager() &&
+                ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.WRITE_EXTERNAL_STORAGE
+                ) == PackageManager.PERMISSION_GRANTED
+    } else {
+        ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.WRITE_EXTERNAL_STORAGE
+        ) == PackageManager.PERMISSION_GRANTED
+    }
+}
+
+
+

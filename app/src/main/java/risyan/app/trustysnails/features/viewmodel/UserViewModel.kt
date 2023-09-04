@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import risyan.app.trustysnails.domain.model.UserSettingModel
 import risyan.app.trustysnails.domain.usecase.user.GetSettingUseCase
 import risyan.app.trustysnails.domain.usecase.user.SetSettingUseCase
+import risyan.app.trustysnails.features.view.model.ContextMenuModel
 
 class UserViewModel(
     val getSettingUseCase: GetSettingUseCase,
@@ -36,5 +37,10 @@ class UserViewModel(
     val _isWebLoading = MutableLiveData(false)
     val isWebLoading : LiveData<Boolean> = _isWebLoading
     fun setWebLoading(isLoading : Boolean) { _isWebLoading.value = isLoading }
+
+    val _contextMenuUrl = MutableLiveData(ContextMenuModel("", ""))
+    val contextMenuUrl : LiveData<ContextMenuModel> = _contextMenuUrl
+    fun showContextMenu(content: ContextMenuModel = ContextMenuModel()) {
+        _contextMenuUrl.value = content }
 
 }

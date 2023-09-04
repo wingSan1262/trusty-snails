@@ -32,14 +32,14 @@ import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import risyan.app.trustysnails.R
-import risyan.app.trustysnails.basecomponent.GifDisplay
-import risyan.app.trustysnails.basecomponent.ResourceEffect
-import risyan.app.trustysnails.basecomponent.createWebViewWithDefaults
+import risyan.app.trustysnails.basecomponent.*
 import risyan.app.trustysnails.basecomponent.ui.component.UrlNavigatingEditText
 import risyan.app.trustysnails.data.remote.model.BrowsingMode
 import risyan.app.trustysnails.domain.model.UserSettingModel
 import risyan.app.trustysnails.domain.model.getCleanIsSafe
 import risyan.app.trustysnails.domain.model.getOneByOneIsSafe
+import risyan.app.trustysnails.features.view.dialog.LinkContextMenu
+import risyan.app.trustysnails.features.view.model.ContextMenuModel
 import risyan.app.trustysnails.features.view.navigator.Screen
 import risyan.app.trustysnails.features.viewmodel.UserViewModel
 
@@ -64,19 +64,29 @@ fun BrowserScreenContent(
     var isOffline = userViewModel.isOffline.observeAsState()
     val getUserSettingData = userViewModel.getSettingData.observeAsState()
     var userSetting : UserSettingModel? by remember { mutableStateOf(null) }
+    val contextMenuContent = userViewModel.contextMenuUrl.observeAsState()
 
     val webView = remember {
         (context as ComponentActivity).createWebViewWithDefaults({
-            userViewModel.setWebLoading(false)
-        },{
-            userViewModel.setOffline(false)
-            isBlocked = if(userSetting?.browsingMode == BrowsingMode.CLEAN_MODE)
-                userSetting?.cleanFilterList?.getCleanIsSafe(it) ?: false
-            else
-                userSetting?.oneByOneList?.getOneByOneIsSafe(it) ?: false
-            userViewModel.setWebLoading(true)
-            userViewModel.updateCurrentUrl(it)
-        }){ userViewModel.setOffline(true) }
+                userViewModel.setWebLoading(false)
+            },{
+                userViewModel.setOffline(false)
+                isBlocked = if(userSetting?.browsingMode == BrowsingMode.CLEAN_MODE)
+                    userSetting?.cleanFilterList?.getCleanIsSafe(it) ?: false
+                else
+                    userSetting?.oneByOneList?.getOneByOneIsSafe(it) ?: false
+                userViewModel.setWebLoading(true)
+                userViewModel.updateCurrentUrl(it)
+            },
+            { userViewModel.setOffline(true) },
+            { filelink, mime ->
+                // TODO temporary
+                if(mime.isEmpty())
+                    userViewModel.showContextMenu(ContextMenuModel(filelink, mime))
+            }
+        ){ filelink, mime ->
+
+        }
     }
 
 
@@ -98,6 +108,18 @@ fun BrowserScreenContent(
     BackHandler(true) {
         webView.goBack()
     }
+
+    contextMenuContent.value?.run{
+        LinkContextMenu(
+            onDismiss = { userViewModel.showContextMenu() },
+            linkContent = if(mimeType.isNotEmpty()) mimeType else url,
+            onDownload = {
+                if(mimeType.isEmpty())
+                    context.downloadFile(url)
+            },
+        )
+    }
+
 
     ResourceEffect(getUserSettingData,{
         userSetting = it.body;
@@ -214,3 +236,4 @@ fun PageNotAvailableMessage(
         )
     }
 }
+

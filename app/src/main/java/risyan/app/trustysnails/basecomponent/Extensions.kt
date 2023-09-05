@@ -1,6 +1,7 @@
 package risyan.app.trustysnails.basecomponent
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.DownloadManager
 import android.content.ActivityNotFoundException
@@ -14,6 +15,7 @@ import android.os.Build
 import android.os.Build.VERSION.SDK_INT
 import android.os.Environment
 import android.util.Base64
+import android.util.Log
 import android.view.ViewGroup
 import android.webkit.*
 import android.widget.Toast
@@ -33,13 +35,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
-import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.IntOffset
+import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.LiveData
+import androidx.lifecycle.lifecycleScope
 import coil.ImageLoader
 import coil.compose.rememberAsyncImagePainter
 import coil.decode.GifDecoder
@@ -49,8 +50,12 @@ import coil.size.Size
 import com.google.android.gms.auth.api.identity.BeginSignInRequest
 import com.google.android.gms.auth.api.identity.Identity
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import risyan.app.trustysnails.BuildConfig
 import java.io.File
 import java.util.*
+import java.util.regex.Pattern
 
 
 fun Context.showToast(msg : String){
@@ -241,6 +246,62 @@ fun getFileExtension(url: String): String {
     return ""
 }
 
+fun getFileName(url : String): String{
+    val lastSlashIndex = url.lastIndexOf('/')
+    val lastDotIndex = url.lastIndexOf('.')
+    if (lastDotIndex != -1 && lastDotIndex > lastSlashIndex) {
+        return url.substring(lastSlashIndex + 1, lastDotIndex)
+    }
+    return "downloadfile"
+}
+
+@SuppressLint("Range")
+fun ComponentActivity.setupDebugDownloadManagerMonitor(){
+    fun runChecking(){
+        val downloadManager = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+        val query = DownloadManager.Query()
+        val cursor = downloadManager.query(query)
+        while (cursor.moveToNext()) {
+            try {
+                val downloadId = cursor.getLong(cursor.getColumnIndex(DownloadManager.COLUMN_ID))
+                val status = cursor.getInt(cursor.getColumnIndex(DownloadManager.COLUMN_STATUS))
+
+                when (status) {
+                    DownloadManager.STATUS_PENDING -> {
+                        Log.d("DownloadStatus", "Download $downloadId is pending")
+                    }
+                    DownloadManager.STATUS_RUNNING -> {
+                        val totalSize = cursor.getLong(cursor.getColumnIndex(DownloadManager.COLUMN_TOTAL_SIZE_BYTES))
+                        val downloadedBytes = cursor.getLong(cursor.getColumnIndex(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR))
+                        val progress = if (totalSize > 0) (downloadedBytes * 100 / totalSize) else 0
+                        Log.d("DownloadStatus", "Download $downloadId is running ($progress%)")
+                    }
+                    DownloadManager.STATUS_SUCCESSFUL -> {
+                        val localUri = cursor.getString(cursor.getColumnIndex(DownloadManager.COLUMN_LOCAL_URI))
+                        val fileName = cursor.getString(cursor.getColumnIndex(DownloadManager.COLUMN_TITLE))
+                        Log.d("DownloadStatus", "Download $downloadId completed successfully. File: $fileName, Uri: $localUri")
+                    }
+                    DownloadManager.STATUS_FAILED -> {
+                        val reason = cursor.getInt(cursor.getColumnIndex(DownloadManager.COLUMN_REASON))
+                        val fileName = cursor.getString(cursor.getColumnIndex(DownloadManager.COLUMN_TITLE))
+                        Log.e("DownloadStatus", "Download $downloadId failed with reason code $reason. File: $fileName")
+                    }
+                }
+            } catch (e: Exception){
+
+            }
+            // Handle the download status here
+        }
+        cursor.close()
+    }
+    lifecycleScope.launch {
+        while(true){
+            delay(2000)
+            runChecking()
+        }
+    }
+}
+
 fun ComponentActivity.createWebViewWithDefaults(
     onPageLoadFinished: () -> Unit = {},
     onPageStartLoad: (url: String) -> Unit = {},
@@ -249,18 +310,65 @@ fun ComponentActivity.createWebViewWithDefaults(
     download: (fileLink: String, mimeType: String)->Unit = { s: String, s1: String -> }
 ): WebView {
 
-
-    fun isDownloadableUrl(url: String): Boolean {
-        val downloadableExtensions = listOf(".pdf", ".zip", ".doc", ".xls", ".png", ".jpg", ".jpeg")
-        return downloadableExtensions.any { url.endsWith(it, ignoreCase = true) }
+    if(BuildConfig.DEBUG){
+        setupDebugDownloadManagerMonitor()
     }
 
-    val webViewClient = object : WebViewClient() {
+
+    return WebView(this).apply {
+        layoutParams = ViewGroup.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.MATCH_PARENT
+        )
+        setupWebViewClient(
+            onPageLoadFinished, onOffline, onLinkContextMenu, onPageStartLoad)
+        setupChromeClient()
+        setupWebViewBrowsingMode(); setupDownloadListener()
+    }
+}
+
+fun WebView.setupChromeClient(){
+    webChromeClient = object : WebChromeClient(){
+        override fun onPermissionRequest(request: PermissionRequest?) {
+            val resources = request?.resources
+            val permissions = mutableListOf<String>()
+
+            if (resources?.contains(PermissionRequest.RESOURCE_VIDEO_CAPTURE) ?: true) {
+                permissions.add(Manifest.permission.CAMERA)
+            }
+
+            if (resources?.contains(PermissionRequest.RESOURCE_AUDIO_CAPTURE) ?: true) {
+                permissions.add(Manifest.permission.RECORD_AUDIO)
+            }
+
+            if (permissions.isNotEmpty()) {
+                ActivityCompat.requestPermissions(
+                    context as ComponentActivity,  // Replace with your Activity reference
+                    permissions.toTypedArray(),
+                    979
+                )
+            } else {
+                request?.grant(resources)
+            }
+        }
+
+        override fun onPermissionRequestCanceled(request: PermissionRequest?) {
+            context.showToast("Permission failed ${request?.resources}")
+        }
+    }
+}
+
+fun WebView.setupWebViewClient(
+    onPageLoadFinished: () -> Unit,
+    onOffline: () -> Unit,
+    onLinkContextMenu: (fileLink: String, mimeType: String) -> Unit,
+    onPageStartLoad: (url: String) -> Unit
+){
+    this.webViewClient = object : WebViewClient() {
         override fun onPageFinished(view: WebView?, url: String?) {
             super.onPageFinished(view, url)
             onPageLoadFinished()
         }
-
         override fun onReceivedError(
             view: WebView?,
             errorCode: Int,
@@ -275,39 +383,29 @@ fun ComponentActivity.createWebViewWithDefaults(
             view: WebView?,
             request: WebResourceRequest?
         ): Boolean {
-
             val url = request?.url.toString()
-
-            if (isDownloadableUrl(url)) {
-                download(url,"")
-                return true
-            }
-
-            try {
-                val intent = Intent(ACTION_VIEW, Uri.parse(url)).apply {
-                    addCategory(CATEGORY_BROWSABLE)
-                    flags = FLAG_ACTIVITY_NEW_TASK or FLAG_ACTIVITY_REQUIRE_NON_BROWSER
-                }
-                startActivity(intent)
-            } catch (e: ActivityNotFoundException) {
-
-            }
+            if(checkAndStartIfDeepLink(url)) return true
             return super.shouldOverrideUrlLoading(view, request)
         }
 
         override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
             super.onPageStarted(view, url, favicon)
+            getProperUserAgent(
+                url?.contains("www.google.com", true) ?: false)
             view?.setOnLongClickListener {
                 val result = view.hitTestResult
                 val urlView = result.extra ?: ""
                 if(getFileExtension(urlView).isNotEmpty()){
                     onLinkContextMenu(urlView,"")
                     return@setOnLongClickListener true
-                }else if(urlView.startsWith("data:")){
-                    val mimeType = urlView.substringAfter(":").substringBefore(";")
-                    onLinkContextMenu(urlView,mimeType)
-                    return@setOnLongClickListener true
                 }
+
+//                else if(urlView.startsWith("data:")){ TODO handle base 64 case
+//                    val mimeType = urlView.substringAfter(":").substringBefore(";")
+//                    onLinkContextMenu(urlView,mimeType)
+//                    return@setOnLongClickListener true
+//                }
+
                 false
             }
             url?.let {
@@ -315,21 +413,75 @@ fun ComponentActivity.createWebViewWithDefaults(
             }
         }
     }
+}
 
-    return WebView(this).apply {
-        layoutParams = ViewGroup.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.MATCH_PARENT
-        )
-
-        webChromeClient = WebChromeClient()
-        this.webViewClient = webViewClient
-        settings.javaScriptEnabled = true
-        settings.domStorageEnabled = true
-        settings.cacheMode = WebSettings.LOAD_DEFAULT
-        CookieManager.getInstance().setAcceptThirdPartyCookies(this, true);
-        CookieManager.getInstance().setAcceptCookie(true);
+fun WebView.checkAndStartIfDeepLink(urlTarget : String): Boolean {
+    try {
+        val intent = Intent(ACTION_VIEW, Uri.parse(urlTarget)).apply {
+            addCategory(CATEGORY_BROWSABLE)
+            flags = FLAG_ACTIVITY_NEW_TASK or FLAG_ACTIVITY_REQUIRE_NON_BROWSER
+        }
+        context.startActivity(intent)
+    } catch (e: ActivityNotFoundException) {
+        return false
     }
+    return true
+}
+
+fun WebView.setupWebViewBrowsingMode(){
+    settings.javaScriptEnabled = true
+    settings.domStorageEnabled = true
+    settings.cacheMode = WebSettings.LOAD_DEFAULT
+    getProperUserAgent(true)
+    CookieManager.getInstance().setAcceptThirdPartyCookies(this, true);
+    CookieManager.getInstance().setAcceptCookie(true);
+}
+
+fun WebView.getProperUserAgent(isGoogleSearch : Boolean) {
+    val defaultUserAgent = System.getProperty("http.agent")
+    val customAgent =
+        ("Mozilla/5.0 (Linux; Android ${Build.VERSION.RELEASE}; " +
+            "${Build.MODEL} Build/${System.getProperty("ro.build.version.incremental")}) " +
+            "AppleWebKit/535.19 (KHTML, like Gecko) " +
+            "Chrome/18.0.1025.133 " +
+            "Mobile Safari/535.19")
+    settings.userAgentString = if(isGoogleSearch) "" else customAgent
+}
+
+fun WebView.setupDownloadListener(){
+    setDownloadListener { url, userAgent, contentDisposition, mimeType, contentLength ->
+        var mimeTypeConvert = mimeType
+        val fileName =
+            if(mimeType.contains("octet", true))
+                contentDisposition.getFileNameFromContentDisposition().also {
+                    mimeTypeConvert = mimeTypeConvert.getFileExtensionFromFileName()
+                }
+            else
+                URLUtil.guessFileName(url, contentDisposition, mimeTypeConvert)
+
+        this.context.downloadByDownloadManager(url, fileName.toString(), "",
+            mimeTypeConvert, userAgent,url.extractDomain())
+    }
+}
+
+
+
+fun String.getFileExtensionFromFileName(): String {
+    val lastDotIndex = lastIndexOf('.')
+    return if (lastDotIndex != -1 && lastDotIndex < length - 1) {
+        substring(lastDotIndex)
+    } else {
+        ""
+    }
+}
+
+fun String.getFileNameFromContentDisposition(): String? {
+    val pattern = Pattern.compile("filename=\"([^\"]+)\"")
+    val matcher = pattern.matcher(this)
+    if (matcher.find()) {
+        return matcher.group(1)
+    }
+    return null
 }
 
 fun String.extractDomain(): String {
@@ -378,35 +530,6 @@ fun String.recheckValidityAndTransform(): String {
     return "$httpPrefix$finalValue"
 }
 
-@Composable
-fun <T, K> MediatorStateResource(
-    vararg liveData: LiveData<Event<ResourceState<T>>>,
-    mapper: (List<ResourceState<T>>) -> ResourceState<K>
-): State<ResourceState<K>> {
-
-    val states = liveData.map { state ->
-        state.observeAsState().value?.nonFilteredContent()
-    }
-
-    return derivedStateOf {
-        mapper(states.requireNoNulls())
-    }
-}
-
-fun <T, K> ResourceState<T>.mapTo(
-    mapper: (T) -> K
-): ResourceState<K>{
-    return when(this){
-        is ResourceState.Success -> ResourceState.Success(mapper(this.body))
-        is ResourceState.Failure ->
-            ResourceState.Failure(
-                exception,
-                body = if(this.body == null) body else mapper(body)
-            )
-    }
-
-
-}
 fun isTimeValid(): Boolean {
     val currentTime = Calendar.getInstance()
     val hour = currentTime.get(Calendar.HOUR_OF_DAY)
@@ -415,69 +538,38 @@ fun isTimeValid(): Boolean {
     return hour % 3 == 0 && minute >= 0 && minute <= 15
 }
 
-fun Context.downloadFile(fileUrl: String) {
+fun Context.downloadByDownloadManager(
+    fileUrl: String,
+    fileName: String,
+    fileExtension: String,
+    mimeType: String, userAgent: String,
+    domain: String
+){
     val downloadManager = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-
-    // Get the file extension from the URL
-    val fileExtension = getFileExtension(fileUrl)
-
-    val request = DownloadManager.Request(Uri.parse(fileUrl))
-        .setTitle("Downloading File")
-        .setDescription("Downloading file from the web")
-        .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-        .setDestinationInExternalPublicDir(
+    val request = DownloadManager.Request(Uri.parse(fileUrl)).apply {
+        setTitle("Downloading $fileName$fileExtension")
+        setDescription("Downloading $fileName$fileExtension from $domain")
+        val cookies = CookieManager.getInstance().getCookie(fileUrl)
+        addRequestHeader("cookie", cookies)
+        allowScanningByMediaScanner();
+        setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE)
+        setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+        if(mimeType.isNotEmpty()) setMimeType(mimeType)
+        if(userAgent.isNotEmpty()) addRequestHeader("User-Agent", userAgent)
+        setDestinationInExternalPublicDir(
             Environment.DIRECTORY_DOWNLOADS,
-            "downloaded_file$fileExtension" // Use the extracted extension
+            "$fileName$fileExtension" // Use the extracted extension
         )
-
+    }
     downloadManager.enqueue(request)
 }
 
-private fun getExtensionFromMimeType(mimeType: String): String? {
-    val extension = MimeTypeMap.getSingleton().getExtensionFromMimeType(mimeType)
-    return extension?.lowercase(Locale.ROOT)
+fun Context.downloadFile(fileUrl: String) {
+    // Get the file extension from the URL
+    val fileExtension = getFileExtension(fileUrl)
+    val fileName = getFileName(fileUrl)
+    val source = fileUrl.extractDomain()
+    downloadByDownloadManager(fileUrl, fileName, fileExtension, "", "",source)
 }
-
-fun Context.downloadBase64(urlView: String, mimeType: String) {
-    val fileExtension = getExtensionFromMimeType(mimeType)
-
-    if (!fileExtension.isNullOrEmpty()) {
-        val fileName = "downloaded_file.$fileExtension"
-        val decodedData = Base64.decode(urlView.substringAfter(","), Base64.DEFAULT)
-
-        // Save the decoded data to a file
-        val file = File(getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), fileName)
-        file.writeBytes(decodedData)
-
-        // Use DownloadManager to download the file
-        val downloadManager = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-        val request = DownloadManager.Request(Uri.fromFile(file))
-            .setTitle(fileName)
-            .setMimeType(mimeType)
-            .setDescription("Downloading...")
-            .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-            .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName)
-        downloadManager.enqueue(request)
-    } else {
-        // Handle invalid file extension
-        Toast.makeText(this, "Invalid file extension", Toast.LENGTH_SHORT).show()
-    }
-}
-
-fun ComponentActivity.isPermissionStorageOk(): Boolean {
-    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-        Environment.isExternalStorageManager() &&
-                ContextCompat.checkSelfPermission(
-                    this,
-                    Manifest.permission.WRITE_EXTERNAL_STORAGE
-                ) == PackageManager.PERMISSION_GRANTED
-    } else {
-        ContextCompat.checkSelfPermission(
-            this,
-            Manifest.permission.WRITE_EXTERNAL_STORAGE
-        ) == PackageManager.PERMISSION_GRANTED
-    }
-}
-
 
 

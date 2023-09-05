@@ -110,14 +110,15 @@ fun BrowserScreenContent(
     }
 
     contextMenuContent.value?.run{
-        LinkContextMenu(
-            onDismiss = { userViewModel.showContextMenu() },
-            linkContent = if(mimeType.isNotEmpty()) mimeType else url,
-            onDownload = {
-                if(mimeType.isEmpty())
-                    context.downloadFile(url)
-            },
-        )
+        if(this.url.isNotEmpty())
+            LinkContextMenu(
+                onDismiss = { userViewModel.showContextMenu() },
+                linkContent = if(mimeType.isNotEmpty()) mimeType else url,
+                onDownload = {
+                    if(mimeType.isEmpty())
+                        context.downloadFile(url)
+                },
+            )
     }
 
 

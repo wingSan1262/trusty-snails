@@ -10,12 +10,13 @@
 
     <application
         android:allowBackup="true"
+        android:name=".basecomponent.MyApp"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@drawable/image_splash_test"
         android:usesCleartextTraffic="true"
-        android:label="@string/app_name"
-        android:roundIcon="@mipmap/ic_launcher_round"
+        android:label="Trusty Snails"
+        android:roundIcon="@drawable/image_splash_test"
         android:supportsRtl="true"
         android:theme="@style/Theme.Trustysnails"
         tools:targetApi="31">
@@ -23,6 +24,7 @@
             android:name=".features.MainActivity"
             android:exported="true"
             android:label="@string/app_name"
+            android:configChanges="orientation|screenSize|keyboardHidden"
             android:theme="@style/Theme.Trustysnails">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

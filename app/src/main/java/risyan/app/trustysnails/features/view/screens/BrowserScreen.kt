@@ -18,45 +18,53 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import coil.size.Size
-import com.google.accompanist.swiperefresh.SwipeRefresh
-import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import risyan.app.trustysnails.R
 import risyan.app.trustysnails.basecomponent.*
+import risyan.app.trustysnails.basecomponent.ui.component.HistoryItemView
 import risyan.app.trustysnails.basecomponent.ui.component.UrlNavigatingEditText
 import risyan.app.trustysnails.data.remote.model.BrowsingMode
+import risyan.app.trustysnails.data.remote.model.HistoryItem
 import risyan.app.trustysnails.domain.model.UserSettingModel
 import risyan.app.trustysnails.domain.model.getCleanIsSafe
 import risyan.app.trustysnails.domain.model.getOneByOneIsSafe
+import risyan.app.trustysnails.features.model.TabModel
+import risyan.app.trustysnails.features.view.component.BottomTabBar
 import risyan.app.trustysnails.features.view.dialog.LinkContextMenu
 import risyan.app.trustysnails.features.view.model.ContextMenuModel
 import risyan.app.trustysnails.features.view.navigator.Screen
+import risyan.app.trustysnails.features.view.screens.HistoryScreenContent
+import risyan.app.trustysnails.features.viewmodel.HistoryViewModel
 import risyan.app.trustysnails.features.viewmodel.UserViewModel
 
 @SuppressLint("UnusedMaterialScaffoldPaddingParameter")
 fun NavGraphBuilder.BrowserScreen(
     userViewModel: UserViewModel,
+    historyViewModel: HistoryViewModel,
     navigateToSetting : ()->Unit,
+    navigateToHistory : ()->Unit
 ){
     composable(route = Screen.BROWSER_SCREEN){
-        BrowserScreenContent(userViewModel, navigateToSetting)
+        BrowserScreenContent(userViewModel, historyViewModel, navigateToSetting, navigateToHistory)
     }
 }
 
 @Composable
 fun BrowserScreenContent(
     userViewModel: UserViewModel,
+    historyViewModel: HistoryViewModel,
     navigateToSetting : ()->Unit,
+    navigateToHistory : ()->Unit
 ) {
     val context = LocalContext.current
 
@@ -64,63 +72,105 @@ fun BrowserScreenContent(
     var isOffline = userViewModel.isOffline.observeAsState()
     val getUserSettingData = userViewModel.getSettingData.observeAsState()
     var userSetting : UserSettingModel? by remember { mutableStateOf(null) }
-    val contextMenuContent = userViewModel.contextMenuUrl.observeAsState()
+    val contextMenuContent = historyViewModel.contextMenuUrl.observeAsState()
+    val tabListState = historyViewModel.tabListData.observeAsState()
+
+    val isShowSuggesting = historyViewModel.isSearching.observeAsState()
 
     val webView = remember {
         (context as ComponentActivity).createWebViewWithDefaults({
-                userViewModel.setWebLoading(false)
+                historyViewModel.setWebLoading(false)
+                historyViewModel.updateCurrentTabInfo(it)
+                historyViewModel.insertHistory(it)
             },{
                 userViewModel.setOffline(false)
                 isBlocked = if(userSetting?.browsingMode == BrowsingMode.CLEAN_MODE)
                     userSetting?.cleanFilterList?.getCleanIsSafe(it) ?: false
                 else
                     userSetting?.oneByOneList?.getOneByOneIsSafe(it) ?: false
-                userViewModel.setWebLoading(true)
-                userViewModel.updateCurrentUrl(it)
+                historyViewModel.setWebLoading(true)
             },
             { userViewModel.setOffline(true) },
-            { filelink, mime ->
-                // TODO temporary
-                if(mime.isEmpty())
-                    userViewModel.showContextMenu(ContextMenuModel(filelink, mime))
+            { filelink ->
+                historyViewModel.showContextMenu(ContextMenuModel(filelink))
             }
-        ){ filelink, mime ->
+        ){ urlTab -> historyViewModel.showContextMenu(ContextMenuModel(webUrl = urlTab)) }
+    }
 
+    Scaffold(
+        topBar = {
+            TopBarUrlNavigations(
+                userViewModel, historyViewModel,
+                webView, navigateToSetting)
+        },
+        bottomBar = {
+            BottomTabBar(
+                tabListState.value?.bareContent() ?: listOf(),
+                { historyViewModel.changeOrAddNewTab(it) },
+                { historyViewModel.removeTab(it)},
+                { historyViewModel.changeOrAddNewTab(TabModel()) }
+            ) {navigateToHistory()}
+        },
+        content = {
+            if(isShowSuggesting.value == true){
+                HistoryScreenContent(historyViewModel = historyViewModel, {
+                    Text(
+                        "Search on google", fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(start = 16.dp, top = 8.dp).clickable {
+                            historyViewModel.setSearching(false)
+                            webView.loadUrl(historyViewModel.searchQuery.generateGoogleSearchUrl()
+                            )})
+
+                    Text(
+                        "Open as web link", fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(start = 16.dp, top = 8.dp).clickable {
+                            historyViewModel.setSearching(false)
+                            webView.loadUrl(historyViewModel.searchQuery.recheckValidityAndTransform()
+                            )})
+
+                }, isTopBar = false){
+                    webView.loadUrl(it?.url.toString())
+                }
+                return@Scaffold
+            }
+            Column(
+                Modifier
+                    .fillMaxSize()
+                    .padding(bottom = it.calculateBottomPadding())
+            ) {
+                if(!isBlocked && isOffline.value == false)
+                    webContentView(webView)
+                else
+                    PageNotAvailableMessage(
+                        imageRes = if(userSetting?.browsingMode == BrowsingMode.CLEAN_MODE)
+                            R.drawable.clean_mode else R.drawable.one_by_one,
+                        if(isOffline.value == true) "You're offline currently" else
+                            "The page you're looking is blocked by you"
+                    )
+
+                contextMenuContent.value?.run{
+                    if(downloadUrl.isNotEmpty() || webUrl.isNotEmpty())
+                        LinkContextMenu(
+                            onDismiss = { historyViewModel.showContextMenu() },
+                            downloadLink = this.downloadUrl ,
+                            webLink = this.webUrl,
+                            onDownload = {
+                                if(mimeType.isEmpty())
+                                    context.downloadFile(downloadUrl)
+                            },
+                            onOpenLinkNewTab = {
+                                historyViewModel.changeOrAddNewTab(TabModel(url = it))
+                            }
+                        )
+                }
+            }
         }
-    }
-
-
-    Column {
-        TopBarUrlNavigations(
-            userViewModel,
-            webView, navigateToSetting)
-        if(!isBlocked && isOffline.value == false)
-            webContentView(webView)
-        else
-            PageNotAvailableMessage(
-                imageRes = if(userSetting?.browsingMode == BrowsingMode.CLEAN_MODE)
-                R.drawable.clean_mode else R.drawable.one_by_one,
-                if(isOffline.value == true) "You're offline currently" else
-                    "The page you're looking is blocked by you"
-            )
-    }
+    )
 
     BackHandler(true) {
         webView.goBack()
+        webView.copyBackForwardList()
     }
-
-    contextMenuContent.value?.run{
-        if(this.url.isNotEmpty())
-            LinkContextMenu(
-                onDismiss = { userViewModel.showContextMenu() },
-                linkContent = if(mimeType.isNotEmpty()) mimeType else url,
-                onDownload = {
-                    if(mimeType.isEmpty())
-                        context.downloadFile(url)
-                },
-            )
-    }
-
 
     ResourceEffect(getUserSettingData,{
         userSetting = it.body;
@@ -132,26 +182,33 @@ fun BrowserScreenContent(
 @Composable
 fun TopBarUrlNavigations(
     userViewModel: UserViewModel,
+    historyViewModel: HistoryViewModel,
     webView: WebView,
     onSetting : ()->Unit,
 ) {
     TopAppBar(
         backgroundColor = Color(0xFF1946AE),
-        contentPadding = PaddingValues(horizontal = 16.dp),
+        contentPadding = PaddingValues(start = 16.dp, end = 16 .dp),
         modifier = Modifier.height(56.dp)
     ) {
 
-        val urlState = userViewModel.currentUrl.observeAsState()
-        val isWebLoading = userViewModel.isWebLoading.observeAsState()
+        val tabState = historyViewModel.tabData.observeAsState() // todo check if need reload webview, set history
+        val isWebLoading = historyViewModel.isWebLoading.observeAsState()
         val coroutineScope = rememberCoroutineScope()
 
+        LaunchedEffect(key1 = tabState.value){
+            if(tabState.value?.bareContent()?.isNeedResetWebView == true)
+                tabState.value?.bareContent()?.setWebViewHistory(webView)
+        }
+
         LaunchedEffect(true){
-            delay(100)
-            webView.loadUrl(urlState.value ?: "https://www.google.com")
+            delay(300)
+            webView.loadUrl(tabState.value?.bareContent()?.url ?: "https://www.google.com")
         }
 
         UrlNavigatingEditText(
             onNewLink = { enteredUrl ->
+                historyViewModel.setSearching(false)
                 coroutineScope.launch {
                     if(userViewModel.isOffline.value == true){
                         userViewModel.getSetting()
@@ -160,8 +217,9 @@ fun TopBarUrlNavigations(
                     webView.loadUrl(enteredUrl)
                 }
             },
-            valueText = urlState.value ?: "",
+            valueText = tabState.value?.bareContent()?.url ?: "",
             placeholder = "Put URL here",
+            historyViewModel,
             isLoading = isWebLoading.value ?: false,
             Modifier
                 .width(0.dp)
@@ -173,17 +231,32 @@ fun TopBarUrlNavigations(
                     RoundedCornerShape(8.dp)
                 ) // Set the background color and rounded corner shape
                 .padding(8.dp)
-        )
+        ){
+            historyViewModel.setSearching(true)
+            historyViewModel.searchQuery = it
+            historyViewModel.requestHistorySuggestion()
+        }
 
         Icon(
             painter = painterResource(id = R.drawable.ic_setting), // Replace with your burger icon
             contentDescription = "Menu",
             modifier = Modifier
-                .size(32.dp)
+                .padding(start = 12.dp)
+                .size(26.dp)
                 .clickable {
                     onSetting()
                 },
-            tint = Color.White
+            tint = Color(0xFFEEEEEE)
+        )
+
+        Icon(
+            painter = painterResource(id = R.drawable.ic_forward), // Replace with your burger icon
+            contentDescription = "Forward",
+            modifier = Modifier
+                .padding(start = 12.dp)
+                .size(24.dp)
+                .clickable { webView.goForward() },
+            tint = Color(0xFFEEEEEE)
         )
     }
 }

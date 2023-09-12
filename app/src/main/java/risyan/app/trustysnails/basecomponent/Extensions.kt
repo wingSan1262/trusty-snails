@@ -8,13 +8,11 @@ import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.content.Intent.*
-import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Build
 import android.os.Build.VERSION.SDK_INT
 import android.os.Environment
-import android.util.Base64
 import android.util.Log
 import android.view.ViewGroup
 import android.webkit.*
@@ -32,17 +30,20 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import coil.ImageLoader
 import coil.compose.rememberAsyncImagePainter
+import coil.compose.rememberImagePainter
 import coil.decode.GifDecoder
 import coil.decode.ImageDecoderDecoder
 import coil.request.ImageRequest
@@ -53,7 +54,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import risyan.app.trustysnails.BuildConfig
-import java.io.File
+import risyan.app.trustysnails.R
+import risyan.app.trustysnails.data.remote.model.HistoryItem
 import java.util.*
 import java.util.regex.Pattern
 
@@ -71,7 +73,7 @@ fun <Model> ResourceEffect(
 ){
     val owner = LocalContext.current
     state.value?.run{
-        val dataObserve = this.nonFilteredContent()
+        val dataObserve = this.bareContent()
         LaunchedEffect(dataObserve) {
             when(dataObserve){
                 is ResourceState.Success -> {
@@ -115,7 +117,7 @@ fun showToastCompose(msg: String){
 
 
 fun <Content> Event<ResourceState<Content>>.getBareContent() : Content? {
-    this.nonFilteredContent().run {
+    this.bareContent().run {
         when(this){
             is ResourceState.Success -> {
                 return this.body
@@ -237,6 +239,26 @@ fun GifDisplay(
     }
 }
 
+@Composable
+fun ImageUrl(
+    url: String
+){
+    val painter = rememberImagePainter(
+        data = url,
+        builder = {
+            placeholder(R.drawable.ic_default_browser) // Set your default image resource here
+            error(R.drawable.ic_default_browser) // Set your error image resource here
+        }
+    )
+
+    Image(
+        painter = painter,
+        contentDescription = "Image",
+        modifier = Modifier.size(24.dp),
+        contentScale = ContentScale.Fit
+    )
+}
+
 fun getFileExtension(url: String): String {
     val lastSlashIndex = url.lastIndexOf('/')
     val lastDotIndex = url.lastIndexOf('.')
@@ -303,11 +325,11 @@ fun ComponentActivity.setupDebugDownloadManagerMonitor(){
 }
 
 fun ComponentActivity.createWebViewWithDefaults(
-    onPageLoadFinished: () -> Unit = {},
-    onPageStartLoad: (url: String) -> Unit = {},
+    onPageLoadFinished: (HistoryItem) -> Unit = {},
+    onPageStartLoad: (String) -> Unit = {},
     onOffline : ()->Unit = {},
-    onLinkContextMenu: (fileLink: String, mimeType: String)->Unit = { s: String, s1: String -> },
-    download: (fileLink: String, mimeType: String)->Unit = { s: String, s1: String -> }
+    onDownloadLink: (fileLink: String)->Unit = {  },
+    onViewNewTab: (link: String) -> Unit
 ): WebView {
 
     if(BuildConfig.DEBUG){
@@ -321,7 +343,7 @@ fun ComponentActivity.createWebViewWithDefaults(
             ViewGroup.LayoutParams.MATCH_PARENT
         )
         setupWebViewClient(
-            onPageLoadFinished, onOffline, onLinkContextMenu, onPageStartLoad)
+            onPageLoadFinished, onOffline, onDownloadLink, onViewNewTab, onPageStartLoad)
         setupChromeClient()
         setupWebViewBrowsingMode(); setupDownloadListener()
     }
@@ -358,17 +380,27 @@ fun WebView.setupChromeClient(){
     }
 }
 
+fun String.isDownloadableFile(): Boolean {
+    return !this.contains("html", true) ||
+            !this.contains("css", true)
+}
+
 fun WebView.setupWebViewClient(
-    onPageLoadFinished: () -> Unit,
+    onPageLoadFinished: (HistoryItem) -> Unit,
     onOffline: () -> Unit,
-    onLinkContextMenu: (fileLink: String, mimeType: String) -> Unit,
-    onPageStartLoad: (url: String) -> Unit
+    onDownloadLink: (fileLink: String) -> Unit,
+    onViewNewTab: (link: String) -> Unit,
+    onPageStartLoad: (String) -> Unit
 ){
+
     this.webViewClient = object : WebViewClient() {
         override fun onPageFinished(view: WebView?, url: String?) {
             super.onPageFinished(view, url)
-            onPageLoadFinished()
+            view?.title?.let {
+                onPageLoadFinished(HistoryItem(title = it, url = url ?: ""))
+            }
         }
+
         override fun onReceivedError(
             view: WebView?,
             errorCode: Int,
@@ -391,21 +423,20 @@ fun WebView.setupWebViewClient(
         override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
             super.onPageStarted(view, url, favicon)
             getProperUserAgent(
-                url?.contains("www.google.com", true) ?: false)
+                url?.contains("google.com", true) ?: false ||
+                        url?.contains("twitter.com", true) ?: false ||
+                        url?.contains("instagram.com", true) ?: false
+            )
             view?.setOnLongClickListener {
                 val result = view.hitTestResult
                 val urlView = result.extra ?: ""
-                if(getFileExtension(urlView).isNotEmpty()){
-                    onLinkContextMenu(urlView,"")
+                if(getFileExtension(urlView).isNotEmpty() &&
+                    getFileExtension(urlView).isDownloadableFile()) {
+                    onDownloadLink(urlView)
                     return@setOnLongClickListener true
+                } else if(urlView.isNotEmpty()) {
+                    onViewNewTab(urlView)
                 }
-
-//                else if(urlView.startsWith("data:")){ TODO handle base 64 case
-//                    val mimeType = urlView.substringAfter(":").substringBefore(";")
-//                    onLinkContextMenu(urlView,mimeType)
-//                    return@setOnLongClickListener true
-//                }
-
                 false
             }
             url?.let {
@@ -417,11 +448,18 @@ fun WebView.setupWebViewClient(
 
 fun WebView.checkAndStartIfDeepLink(urlTarget : String): Boolean {
     try {
-        val intent = Intent(ACTION_VIEW, Uri.parse(urlTarget)).apply {
-            addCategory(CATEGORY_BROWSABLE)
-            flags = FLAG_ACTIVITY_NEW_TASK or FLAG_ACTIVITY_REQUIRE_NON_BROWSER
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(urlTarget)).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REQUIRE_NON_BROWSER
+        }
+        val packageManager = context.packageManager
+        val activities = packageManager.queryIntentActivities(intent, 0)
+
+        activities.forEach {
+            if(it?.activityInfo?.targetActivity?.contains("chrome", true) == true)
+                return false
         }
         context.startActivity(intent)
+        return true
     } catch (e: ActivityNotFoundException) {
         return false
     }
@@ -485,12 +523,16 @@ fun String.getFileNameFromContentDisposition(): String? {
 }
 
 fun String.extractDomain(): String {
-    val startIndex = this.indexOf("://") + 3
-    val endIndex = this.indexOf("/", startIndex)
-    return if (endIndex != -1) {
-        this.substring(startIndex, endIndex)
-    } else {
-        this.substring(startIndex)
+    return try {
+        val startIndex = this.indexOf("://") + 3
+        val endIndex = this.indexOf("/", startIndex)
+        return if (endIndex != -1) {
+            this.substring(startIndex, endIndex)
+        } else {
+            this.substring(startIndex)
+        }
+    } catch (e : Exception){
+        "notvalid"
     }
 }
 
@@ -570,6 +612,12 @@ fun Context.downloadFile(fileUrl: String) {
     val fileName = getFileName(fileUrl)
     val source = fileUrl.extractDomain()
     downloadByDownloadManager(fileUrl, fileName, fileExtension, "", "",source)
+}
+
+fun String.generateGoogleSearchUrl(): String {
+    val baseUrl = "https://www.google.com/search"
+    val encodedQuery = Uri.encode(this)
+    return "$baseUrl?q=$encodedQuery"
 }
 
 

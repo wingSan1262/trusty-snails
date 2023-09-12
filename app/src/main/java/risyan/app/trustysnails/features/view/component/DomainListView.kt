@@ -28,7 +28,7 @@ import risyan.app.trustysnails.basecomponent.ui.component.UrlNavigatingEditText
 import risyan.app.trustysnails.data.remote.model.BrowsingMode
 
 
-@OptIn(ExperimentalMaterialApi::class)
+@OptIn(ExperimentalMaterialApi::class, ExperimentalComposeUiApi::class)
 fun DomainListInput(
     scope: LazyListScope,
     browsingMode: BrowsingMode,
@@ -81,7 +81,8 @@ fun DomainListInput(
                                         context.showToast("Invalid add subdomain (ex:www) or tld (ex.com)")
                                 }
                                 keyboard?.hide()
-                            }
+                            },
+                            isUseRefresh = false
                         )
                     },
                     background = {}

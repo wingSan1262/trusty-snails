@@ -16,7 +16,7 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import kotlinx.coroutines.delay
 import risyan.app.trustysnails.R
-import risyan.app.trustysnails.basecomponent.ui.theme.GRAY_CDD5EA
+import risyan.app.trustysnails.basecomponent.ui.theme.GRAY_757575
 import risyan.app.trustysnails.basecomponent.ui.theme.LIGHT_BLUE_0033AA
 import risyan.app.trustysnails.features.view.navigator.Screen
 
@@ -47,14 +47,14 @@ fun SplashContent(
     ){
 
         Image(
-            painter = painterResource(id = R.drawable.image_splash), // Replace with your logo image
+            painter = painterResource(id = R.drawable.image_splash_test), // Replace with your logo image
             contentDescription = null,
             modifier = Modifier.size(200.dp)
         )
 
         Text(
             text = "Trusty Snails",
-            color = GRAY_CDD5EA,
+            color = GRAY_757575,
             fontSize = 30.sp,
             modifier = Modifier.padding(top = 16.dp, bottom = 40.dp)
         )

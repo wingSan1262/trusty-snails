@@ -4,7 +4,7 @@ import androidx.lifecycle.MediatorLiveData
 import androidx.lifecycle.ViewModel
 import risyan.app.trustysnails.basecomponent.Event
 import risyan.app.trustysnails.basecomponent.ResourceState
-import risyan.app.trustysnails.data.remote.api.AuthStatus
+import risyan.app.trustysnails.data.remote.api.firebase.AuthStatus
 import risyan.app.trustysnails.domain.usecase.auth.LoginWithGoogleUseCase
 import risyan.app.trustysnails.domain.usecase.auth.LogoutGoogleUseCase
 

@@ -9,16 +9,19 @@ import com.google.firebase.auth.FirebaseAuth
 import risyan.app.trustysnails.basecomponent.ResourceEffect
 import risyan.app.trustysnails.data.remote.model.BrowsingMode
 import risyan.app.trustysnails.features.view.screen.BrowserScreen
+import risyan.app.trustysnails.features.view.screens.HistoryScreen
 import risyan.app.trustysnails.features.view.screens.OnboardingScreen
 import risyan.app.trustysnails.features.view.screens.SettingScreen
 import risyan.app.trustysnails.features.view.screens.SplashScreen
 import risyan.app.trustysnails.features.viewmodel.AuthViewModel
+import risyan.app.trustysnails.features.viewmodel.HistoryViewModel
 import risyan.app.trustysnails.features.viewmodel.UserViewModel
 
 @Composable
 fun TaskComposeNavigationHost(
     authViewModel: AuthViewModel,
     userViewModel: UserViewModel,
+    historyViewModel: HistoryViewModel,
     nav: NavHostController,
 ){
     val navigator = remember(nav){
@@ -39,9 +42,14 @@ fun TaskComposeNavigationHost(
         SettingScreen(userViewModel){
             navigator.navigateToBrowserScreen(true)
         }
-        BrowserScreen(userViewModel){
-            if(userViewModel.isOffline.value == false)
-                navigator.navigateToSetting(false)
+        BrowserScreen(userViewModel, historyViewModel,
+            {
+                if(userViewModel.isOffline.value == false)
+                    navigator.navigateToSetting(false)
+            }
+        ){ navigator.navigateToHistory(false) }
+        HistoryScreen(historyViewModel){
+            navigator.navigateToBrowserScreen(true)
         }
     }
 
@@ -90,5 +98,6 @@ class Screen {
         val START_SCREEN by lazy { "START_SCREEN" }
         val SETTING_SCREEN by lazy { "SETTING_SCREEN" }
         val BROWSER_SCREEN by lazy { "BROWSER_SCREEN" }
+        val HISTORY_SCREEN by lazy { "HISTORY_SCREEN" }
     }
 }

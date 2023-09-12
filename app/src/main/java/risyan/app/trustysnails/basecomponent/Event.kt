@@ -12,7 +12,7 @@ class Event<T>(content: T?) {
             mContent
         }
 
-    fun nonFilteredContent() = mContent
+    fun bareContent() = mContent
 
     fun hasBeenHandled(): Boolean {
         return hasBeenHandled

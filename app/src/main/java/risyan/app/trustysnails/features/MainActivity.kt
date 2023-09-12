@@ -14,11 +14,13 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import risyan.app.trustysnails.basecomponent.BaseActivity
 import risyan.app.trustysnails.basecomponent.ui.theme.TrustysnailsTheme
+import risyan.app.trustysnails.data.remote.model.HistoryItem
 import risyan.app.trustysnails.di.Inject
 import risyan.app.trustysnails.di.Injector
 import risyan.app.trustysnails.features.view.navigator.TaskComposeNavigationHost
 import risyan.app.trustysnails.features.view.navigator.TaskScreenNavigator
 import risyan.app.trustysnails.features.viewmodel.AuthViewModel
+import risyan.app.trustysnails.features.viewmodel.HistoryViewModel
 import risyan.app.trustysnails.features.viewmodel.UserViewModel
 
 class MainActivity : BaseActivity() {
@@ -27,6 +29,8 @@ class MainActivity : BaseActivity() {
     lateinit var authViewModel: AuthViewModel
     @Inject
     lateinit var userViewModel: UserViewModel
+    @Inject
+    lateinit var historyViewModel: HistoryViewModel
 
     private lateinit var navController : NavHostController
 
@@ -36,14 +40,16 @@ class MainActivity : BaseActivity() {
         super.onCreate(savedInstanceState)
 
         val intentData = intent.data
-        if (intentData != null) userViewModel.updateCurrentUrl(intentData.toString())
+        if (intentData != null) historyViewModel.updateCurrentTabInfo(
+            HistoryItem(url = intentData.toString(), title = "Web page")
+        )
 
         setContent {
             TrustysnailsTheme {
                 // A surface container using the 'background' color from the theme
                 navController = rememberNavController()
                 TaskComposeNavigationHost(
-                    authViewModel, userViewModel, navController
+                    authViewModel, userViewModel, historyViewModel, navController
                 )
             }
         }

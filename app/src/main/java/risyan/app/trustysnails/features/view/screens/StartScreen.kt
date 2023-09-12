@@ -26,7 +26,7 @@ import risyan.app.trustysnails.R
 import risyan.app.trustysnails.basecomponent.*
 import risyan.app.trustysnails.basecomponent.ui.theme.BLUE_002989
 import risyan.app.trustysnails.basecomponent.ui.theme.GRAY_757575
-import risyan.app.trustysnails.data.remote.api.AuthStatus
+import risyan.app.trustysnails.data.remote.api.firebase.AuthStatus
 import risyan.app.trustysnails.features.view.navigator.Screen
 import risyan.app.trustysnails.features.viewmodel.AuthViewModel
 
@@ -95,7 +95,7 @@ fun OnboardingContent(
 
         // Image
         Image(
-            painter = painterResource(id = R.drawable.image_splash), // Replace with your image resource
+            painter = painterResource(id = R.drawable.image_splash_test), // Replace with your image resource
             contentDescription = "illustration",
             modifier = Modifier
                 .size(128.dp),

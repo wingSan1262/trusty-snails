@@ -1,7 +1,6 @@
-package risyan.app.trustysnails.data.remote.api
+package risyan.app.trustysnails.data.remote.api.firebase
 
 import com.google.android.gms.auth.api.identity.SignInClient
-import com.google.firebase.auth.AuthResult
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
 import kotlinx.coroutines.tasks.await

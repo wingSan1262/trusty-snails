@@ -23,4 +23,10 @@ class TaskScreenNavigator(
             route = Screen.BROWSER_SCREEN
         ){ if(isPop) popUpTo(Screen.BROWSER_SCREEN) }
     }
+
+    fun navigateToHistory(isPop : Boolean = false) {
+        nav.navigate(
+            route = Screen.HISTORY_SCREEN
+        ){ if(isPop) popUpTo(Screen.HISTORY_SCREEN) }
+    }
 }

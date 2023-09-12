@@ -1,6 +1,7 @@
 package risyan.app.trustysnails.features.view.model
 
 data class ContextMenuModel(
-    val url : String = "",
+    val downloadUrl : String = "",
+    val webUrl : String = "",
     val mimeType : String = "",
 )

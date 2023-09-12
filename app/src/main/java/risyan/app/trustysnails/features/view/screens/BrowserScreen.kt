@@ -1,6 +1,10 @@
 package risyan.app.trustysnails.features.view.screen
 
 import android.annotation.SuppressLint
+import android.app.Activity
+import android.net.Uri
+import android.webkit.ValueCallback
+import android.webkit.WebChromeClient
 import android.webkit.WebView
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -18,7 +22,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -31,10 +34,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import risyan.app.trustysnails.R
 import risyan.app.trustysnails.basecomponent.*
-import risyan.app.trustysnails.basecomponent.ui.component.HistoryItemView
 import risyan.app.trustysnails.basecomponent.ui.component.UrlNavigatingEditText
 import risyan.app.trustysnails.data.remote.model.BrowsingMode
-import risyan.app.trustysnails.data.remote.model.HistoryItem
 import risyan.app.trustysnails.domain.model.UserSettingModel
 import risyan.app.trustysnails.domain.model.getCleanIsSafe
 import risyan.app.trustysnails.domain.model.getOneByOneIsSafe
@@ -77,6 +78,14 @@ fun BrowserScreenContent(
 
     val isShowSuggesting = historyViewModel.isSearching.observeAsState()
 
+
+    var fileCallback : ValueCallback<Array<Uri>>? by remember { mutableStateOf(null) }
+    val fileLauncher = ComposeActivityLauncher({
+        fileCallback?.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(
+            Activity.RESULT_OK, it))
+        fileCallback = null
+    })
+
     val webView = remember {
         (context as ComponentActivity).createWebViewWithDefaults({
                 historyViewModel.setWebLoading(false)
@@ -93,9 +102,13 @@ fun BrowserScreenContent(
             { userViewModel.setOffline(true) },
             { filelink ->
                 historyViewModel.showContextMenu(ContextMenuModel(filelink))
+            },{ i, fileCb ->
+                fileCallback = fileCb; fileLauncher.launch(i)
             }
         ){ urlTab -> historyViewModel.showContextMenu(ContextMenuModel(webUrl = urlTab)) }
     }
+
+
 
     Scaffold(
         topBar = {
@@ -116,17 +129,25 @@ fun BrowserScreenContent(
                 HistoryScreenContent(historyViewModel = historyViewModel, {
                     Text(
                         "Search on google", fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(start = 16.dp, top = 8.dp).clickable {
-                            historyViewModel.setSearching(false)
-                            webView.loadUrl(historyViewModel.searchQuery.generateGoogleSearchUrl()
-                            )})
+                        modifier = Modifier
+                            .padding(start = 16.dp, top = 8.dp)
+                            .clickable {
+                                historyViewModel.setSearching(false)
+                                webView.loadUrl(
+                                    historyViewModel.searchQuery.generateGoogleSearchUrl()
+                                )
+                            })
 
                     Text(
                         "Open as web link", fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(start = 16.dp, top = 8.dp).clickable {
-                            historyViewModel.setSearching(false)
-                            webView.loadUrl(historyViewModel.searchQuery.recheckValidityAndTransform()
-                            )})
+                        modifier = Modifier
+                            .padding(start = 16.dp, top = 8.dp)
+                            .clickable {
+                                historyViewModel.setSearching(false)
+                                webView.loadUrl(
+                                    historyViewModel.searchQuery.recheckValidityAndTransform()
+                                )
+                            })
 
                 }, isTopBar = false){
                     webView.loadUrl(it?.url.toString())

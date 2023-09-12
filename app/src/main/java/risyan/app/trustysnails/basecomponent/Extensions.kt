@@ -131,7 +131,7 @@ fun <Content> Event<ResourceState<Content>>.getBareContent() : Content? {
 
 @Composable
 fun ComposeActivityLauncher(
-    onSuccess: (Intent?)->Unit ={},
+    onSuccess: (Intent?)->Unit = { },
     onFail: ()->Unit = {},
     onFinish: (Intent?)->Unit ={},
 ): ManagedActivityResultLauncher<Intent, ActivityResult> {
@@ -327,8 +327,9 @@ fun ComponentActivity.setupDebugDownloadManagerMonitor(){
 fun ComponentActivity.createWebViewWithDefaults(
     onPageLoadFinished: (HistoryItem) -> Unit = {},
     onPageStartLoad: (String) -> Unit = {},
-    onOffline : ()->Unit = {},
-    onDownloadLink: (fileLink: String)->Unit = {  },
+    onOffline: () -> Unit = {},
+    onDownloadLink: (fileLink: String) -> Unit = { },
+    onFileChoose: (Intent, ValueCallback<Array<Uri>>?) -> Unit,
     onViewNewTab: (link: String) -> Unit
 ): WebView {
 
@@ -343,13 +344,16 @@ fun ComponentActivity.createWebViewWithDefaults(
             ViewGroup.LayoutParams.MATCH_PARENT
         )
         setupWebViewClient(
-            onPageLoadFinished, onOffline, onDownloadLink, onViewNewTab, onPageStartLoad)
-        setupChromeClient()
+            onPageLoadFinished, onOffline, onDownloadLink, onViewNewTab, onPageStartLoad,
+        )
+        setupChromeClient(onFileChoose)
         setupWebViewBrowsingMode(); setupDownloadListener()
     }
 }
 
-fun WebView.setupChromeClient(){
+fun WebView.setupChromeClient(
+    onFileChoose : (Intent, ValueCallback<Array<Uri>>?)->Unit
+) {
     webChromeClient = object : WebChromeClient(){
         override fun onPermissionRequest(request: PermissionRequest?) {
             val resources = request?.resources
@@ -376,6 +380,21 @@ fun WebView.setupChromeClient(){
 
         override fun onPermissionRequestCanceled(request: PermissionRequest?) {
             context.showToast("Permission failed ${request?.resources}")
+        }
+
+        override fun onShowFileChooser(
+            webView: WebView?,
+            filePathCallback: ValueCallback<Array<Uri>>?,
+            fileChooserParams: FileChooserParams?
+        ): Boolean {
+            if(fileChooserParams != null && filePathCallback != null){
+                val intent = fileChooserParams.createIntent()
+                intent.addCategory(Intent.CATEGORY_OPENABLE);
+                intent.type = "*/*";
+                onFileChoose(intent, filePathCallback)
+                return true
+            }
+            return super.onShowFileChooser(webView, filePathCallback, fileChooserParams)
         }
     }
 }

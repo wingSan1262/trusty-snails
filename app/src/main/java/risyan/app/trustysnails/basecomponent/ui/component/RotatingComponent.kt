@@ -76,6 +76,7 @@ fun SlideFromBottomContainer(
 fun SlideFromEndContainer(
     content: @Composable () -> Unit,
     initialOffset : Int = 100,
+    delayTime : Long = 100L,
     modifier: Modifier = Modifier
 ){
     var startVisible by remember { mutableStateOf(false) }
@@ -91,7 +92,7 @@ fun SlideFromEndContainer(
     }
 
     LaunchedEffect(true){
-        delay(100)
+        delay(delayTime)
         startVisible = true
     }
 }

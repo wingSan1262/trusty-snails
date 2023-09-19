@@ -146,10 +146,10 @@ fun BrowserScreenContent(
                         modifier = Modifier
                             .padding(start = 16.dp, top = 8.dp)
                             .clickable {
-                                historyViewModel.setSearching(false)
                                 webView.loadUrl(
                                     historyViewModel.searchQuery.generateGoogleSearchUrl()
                                 )
+                                historyViewModel.setSearching(false)
                             })
 
                     Text(
@@ -157,48 +157,48 @@ fun BrowserScreenContent(
                         modifier = Modifier
                             .padding(start = 16.dp, top = 8.dp)
                             .clickable {
-                                historyViewModel.setSearching(false)
                                 webView.loadUrl(
-                                    historyViewModel.searchQuery.recheckValidityAndTransform()
-                                )
+                                    historyViewModel.searchQuery.recheckValidityAndTransform())
+                                historyViewModel.setSearching(false)
                             })
 
                 }, isTopBar = false){
                     webView.loadUrl(it?.url.toString())
                 }
-                return@Scaffold
-            }
-            Column(
-                Modifier
-                    .fillMaxSize()
-                    .padding(bottom = it.calculateBottomPadding())
-            ) {
-                if(!isBlocked && isOffline.value == false)
-                    webContentView(webView)
-                else
-                    PageNotAvailableMessage(
-                        imageRes = if(userSetting?.browsingMode == BrowsingMode.CLEAN_MODE)
-                            R.drawable.clean_mode else R.drawable.one_by_one,
-                        if(isOffline.value == true) "You're offline currently" else
-                            "The page you're looking is blocked by you"
-                    )
-
-                contextMenuContent.value?.run{
-                    if(downloadUrl.isNotEmpty() || webUrl.isNotEmpty())
-                        LinkContextMenu(
-                            onDismiss = { historyViewModel.showContextMenu() },
-                            downloadLink = this.downloadUrl ,
-                            webLink = this.webUrl,
-                            onDownload = {
-                                if(mimeType.isEmpty())
-                                    context.downloadFile(downloadUrl)
-                            },
-                            onOpenLinkNewTab = {
-                                historyViewModel.changeOrAddNewTab(TabModel(url = it))
-                            }
+            } else {
+                Column(
+                    Modifier
+                        .fillMaxSize()
+                        .padding(bottom = it.calculateBottomPadding())
+                ) {
+                    if(!isBlocked && isOffline.value == false)
+                        webContentView(webView)
+                    else
+                        PageNotAvailableMessage(
+                            imageRes = if(userSetting?.browsingMode == BrowsingMode.CLEAN_MODE)
+                                R.drawable.clean_mode else R.drawable.one_by_one,
+                            if(isOffline.value == true) "You're offline currently" else
+                                "The page you're looking is blocked by you"
                         )
+
+                    contextMenuContent.value?.run{
+                        if(downloadUrl.isNotEmpty() || webUrl.isNotEmpty())
+                            LinkContextMenu(
+                                onDismiss = { historyViewModel.showContextMenu() },
+                                downloadLink = this.downloadUrl ,
+                                webLink = this.webUrl,
+                                onDownload = {
+                                    if(mimeType.isEmpty())
+                                        context.downloadFile(downloadUrl)
+                                },
+                                onOpenLinkNewTab = {
+                                    historyViewModel.changeOrAddNewTab(TabModel(url = it))
+                                }
+                            )
+                    }
                 }
             }
+
         }
     )
 

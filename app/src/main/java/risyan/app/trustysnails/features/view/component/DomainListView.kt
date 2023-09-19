@@ -42,20 +42,21 @@ fun DomainListInput(
         val keyboard = LocalSoftwareKeyboardController.current
 
         Text(
-            text = "Masukan list domain yang ingin kamu akses",
+            text = "Masukan list domain yang ingin kamu " +
+                    if(browsingMode == BrowsingMode.CLEAN_MODE) "akses" else "block",
             fontWeight = FontWeight.Normal,
             fontSize = 20.sp,
             modifier = Modifier.padding(16.dp)
         )
 
         Column(modifier = Modifier
-            .fillMaxWidth()
+            .fillMaxWidth().padding(horizontal = 16.dp)
             .wrapContentHeight()) {
             domainStateList.forEachIndexed { index,value ->
                 SlideFromEndContainer(content = {
                     SwipeToDismiss(
                         state = rememberDismissState { direction ->
-                            if (direction == DismissValue.DismissedToStart) {
+                            if(direction == DismissValue.DismissedToStart){
                                 if(browsingMode == BrowsingMode.ONE_BY_ONE && !isTimeValid()){
                                     context.showToast("Penghapusan tersedia pada 15 menit pertama " +
                                             "setiap jam dengan kelipatan 3 (mis: 12, 21, dll).")
@@ -119,7 +120,7 @@ fun DomainListInput(
                     .size(20.dp)
             )
             Spacer(modifier = Modifier.width(8.dp))
-            Text(text = "More next", fontWeight = FontWeight.Bold)
+            Text(text = "Add", fontWeight = FontWeight.Bold)
         }
     }
 }

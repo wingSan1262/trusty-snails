@@ -161,6 +161,7 @@ fun SettingContent(
                 Row(
                     Modifier.padding(vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
                 ) {
                     Spacer(modifier = Modifier.width(16.dp))
                     Text(text = "Simpan", color = Color.White, fontSize = 18.sp)

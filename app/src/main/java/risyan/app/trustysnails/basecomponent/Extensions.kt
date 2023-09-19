@@ -490,6 +490,9 @@ fun WebView.setupWebViewBrowsingMode(){
     settings.javaScriptEnabled = true
     settings.domStorageEnabled = true
     settings.cacheMode = WebSettings.LOAD_DEFAULT
+    settings.setSupportZoom(true)
+    settings.builtInZoomControls = true
+    settings.displayZoomControls = false
     getProperUserAgent(true)
     CookieManager.getInstance().setAcceptThirdPartyCookies(this, true);
     CookieManager.getInstance().setAcceptCookie(true);

@@ -53,8 +53,11 @@ fun HistoryScreenContent(
             isQuerying = false } }
 
     var isFirstQuery by remember { mutableStateOf(true) }
-    LaunchedEffect(key1 = true){ historyViewModel.query = ""
-        historyViewModel.searchHistory(true); delay(300); isFirstQuery = false}
+    LaunchedEffect(key1 = true){
+        historyViewModel.query = ""
+        historyViewModel.searchHistory(true);
+        delay(1500); isFirstQuery = false
+    }
 
 
     val coroutine = rememberCoroutineScope()
@@ -95,7 +98,17 @@ fun HistoryScreenContent(
                 historyData.value?.bareContent() ?: listOf(),
                 key = {index, item -> item.url}
             ) { index, item ->
-                SlideFromEndContainer(content = {
+                if(isFirstQuery) {
+                    SlideFromEndContainer(content = {
+                        HistoryItemView(item){
+                            coroutine.launch {
+                                back(it)
+                                historyViewModel.updateCurrentTabInfo(it)
+                                historyViewModel.setSearching(false)
+                            }
+                        }
+                    }, initialOffset = 300)
+                } else {
                     HistoryItemView(item){
                         coroutine.launch {
                             back(it)
@@ -103,7 +116,8 @@ fun HistoryScreenContent(
                             historyViewModel.setSearching(false)
                         }
                     }
-                }, initialOffset = 300)
+                }
+
             }
             item {
                 LaunchedEffect(true) {

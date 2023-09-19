@@ -8,9 +8,17 @@ import android.webkit.WebChromeClient
 import android.webkit.WebView
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,6 +27,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -34,7 +43,12 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import risyan.app.trustysnails.R
 import risyan.app.trustysnails.basecomponent.*
+import risyan.app.trustysnails.basecomponent.ui.component.RotatingComponent
+import risyan.app.trustysnails.basecomponent.ui.component.SlideFromBottomContainer
 import risyan.app.trustysnails.basecomponent.ui.component.UrlNavigatingEditText
+import risyan.app.trustysnails.basecomponent.ui.theme.GRAY_757575
+import risyan.app.trustysnails.basecomponent.ui.theme.GRAY_CDD5EA
+import risyan.app.trustysnails.basecomponent.ui.theme.GRAY_EEEEEE
 import risyan.app.trustysnails.data.remote.model.BrowsingMode
 import risyan.app.trustysnails.domain.model.UserSettingModel
 import risyan.app.trustysnails.domain.model.getCleanIsSafe
@@ -227,48 +241,57 @@ fun TopBarUrlNavigations(
             webView.loadUrl(tabState.value?.bareContent()?.url ?: "https://www.google.com")
         }
 
-        UrlNavigatingEditText(
-            onNewLink = { enteredUrl ->
-                historyViewModel.setSearching(false)
-                coroutineScope.launch {
-                    if(userViewModel.isOffline.value == true){
-                        userViewModel.getSetting()
-                    }
-                    delay(175)
-                    webView.loadUrl(enteredUrl)
+        SlideFromBottomContainer(content = {
+            Card(
+                backgroundColor = Color.White,
+                elevation = 24.dp,
+                shape = RoundedCornerShape(8.dp)
+            ){
+                UrlNavigatingEditText(
+                    onNewLink = { enteredUrl ->
+                        historyViewModel.setSearching(false)
+                        coroutineScope.launch {
+                            if(userViewModel.isOffline.value == true){
+                                userViewModel.getSetting()
+                            }
+                            delay(175)
+                            webView.loadUrl(enteredUrl)
+                        }
+                    },
+                    valueText = tabState.value?.bareContent()?.url ?: "",
+                    placeholder = "Put URL here",
+                    historyViewModel,
+                    isLoading = isWebLoading.value ?: false,
+                    Modifier
+                        .background(
+                            Color.White,
+                            RoundedCornerShape(8.dp)
+                        ) // Set the background color and rounded corner shape
+                        .padding(8.dp)
+                ){
+                    historyViewModel.setSearching(true)
+                    historyViewModel.searchQuery = it
+                    historyViewModel.requestHistorySuggestion()
                 }
-            },
-            valueText = tabState.value?.bareContent()?.url ?: "",
-            placeholder = "Put URL here",
-            historyViewModel,
-            isLoading = isWebLoading.value ?: false,
-            Modifier
-                .width(0.dp)
-                .weight(1f)
-                .padding(horizontal = 4.dp)
-                .border(1.dp, Color.Gray, RoundedCornerShape(8.dp))
-                .background(
-                    Color.White,
-                    RoundedCornerShape(8.dp)
-                ) // Set the background color and rounded corner shape
-                .padding(8.dp)
-        ){
-            historyViewModel.setSearching(true)
-            historyViewModel.searchQuery = it
-            historyViewModel.requestHistorySuggestion()
-        }
+            }
+        }, modifier = Modifier
+            .width(0.dp)
+            .weight(1f)
+            .padding(horizontal = 4.dp))
 
-        Icon(
-            painter = painterResource(id = R.drawable.ic_setting), // Replace with your burger icon
-            contentDescription = "Menu",
-            modifier = Modifier
-                .padding(start = 12.dp)
-                .size(26.dp)
-                .clickable {
-                    onSetting()
-                },
-            tint = Color(0xFFEEEEEE)
-        )
+        RotatingComponent(content = {
+            Icon(
+                painter = painterResource(id = R.drawable.ic_setting), // Replace with your burger icon
+                contentDescription = "Menu",
+                modifier = Modifier
+                    .clickable {
+                        onSetting()
+                    },
+                tint = Color(0xFFEEEEEE)
+            )
+        }, Modifier
+            .padding(start = 8.dp)
+            .size(26.dp))
 
         Icon(
             painter = painterResource(id = R.drawable.ic_forward), // Replace with your burger icon

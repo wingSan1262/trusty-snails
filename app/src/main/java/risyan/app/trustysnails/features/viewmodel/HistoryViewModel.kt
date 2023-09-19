@@ -33,12 +33,17 @@ class HistoryViewModel(
     val _searchHistoryData = MediatorLiveData<Event<List<HistoryItem>>>().apply {
         addSource(searchHistoryUseCase.currentData){
             val currentValue = this.value?.bareContent() ?: null
-            currentValue
-            value = Event(
-                ArrayList(currentValue ?: listOf()).apply {
-                    addAll(it.getBareContent() ?: listOf<HistoryItem>())
+            viewModelScope.launch {
+                it.getBareContent()?.forEach {
+                    val currentValue = this@apply.value?.bareContent() ?: null
+                    delay(50)
+                    value = Event(
+                        ArrayList(currentValue ?: listOf()).apply {
+                            add(it)
+                        }
+                    )
                 }
-            )
+            }
         }
     }
     val searchHistoryData : LiveData<Event<List<HistoryItem>>> = _searchHistoryData

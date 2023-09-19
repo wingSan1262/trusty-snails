@@ -19,6 +19,8 @@ import androidx.navigation.compose.composable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import risyan.app.trustysnails.basecomponent.ui.component.HistoryItemView
+import risyan.app.trustysnails.basecomponent.ui.component.SlideFromBottomContainer
+import risyan.app.trustysnails.basecomponent.ui.component.SlideFromEndContainer
 import risyan.app.trustysnails.data.remote.model.HistoryItem
 import risyan.app.trustysnails.features.view.component.CommonSearchBar
 import risyan.app.trustysnails.features.view.navigator.Screen
@@ -93,13 +95,15 @@ fun HistoryScreenContent(
                 historyData.value?.bareContent() ?: listOf(),
                 key = {index, item -> item.url}
             ) { index, item ->
-                HistoryItemView(item){
-                    coroutine.launch {
-                        back(it)
-                        historyViewModel.updateCurrentTabInfo(it)
-                        historyViewModel.setSearching(false)
+                SlideFromEndContainer(content = {
+                    HistoryItemView(item){
+                        coroutine.launch {
+                            back(it)
+                            historyViewModel.updateCurrentTabInfo(it)
+                            historyViewModel.setSearching(false)
+                        }
                     }
-                }
+                }, initialOffset = 300)
             }
             item {
                 LaunchedEffect(true) {

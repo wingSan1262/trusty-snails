@@ -241,7 +241,8 @@ fun GifDisplay(
 
 @Composable
 fun ImageUrl(
-    url: String
+    url: String,
+    modifier: Modifier = Modifier.size(24.dp)
 ){
     val painter = rememberImagePainter(
         data = url,
@@ -254,7 +255,7 @@ fun ImageUrl(
     Image(
         painter = painter,
         contentDescription = "Image",
-        modifier = Modifier.size(24.dp),
+        modifier = modifier,
         contentScale = ContentScale.Fit
     )
 }

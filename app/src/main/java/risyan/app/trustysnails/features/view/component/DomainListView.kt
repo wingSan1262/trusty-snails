@@ -24,6 +24,7 @@ import risyan.app.trustysnails.basecomponent.checkLinkValidity
 import risyan.app.trustysnails.basecomponent.isTimeValid
 import risyan.app.trustysnails.basecomponent.recheckValidityAndTransform
 import risyan.app.trustysnails.basecomponent.showToast
+import risyan.app.trustysnails.basecomponent.ui.component.SlideFromEndContainer
 import risyan.app.trustysnails.basecomponent.ui.component.UrlNavigatingEditText
 import risyan.app.trustysnails.data.remote.model.BrowsingMode
 
@@ -51,42 +52,44 @@ fun DomainListInput(
             .fillMaxWidth()
             .wrapContentHeight()) {
             domainStateList.forEachIndexed { index,value ->
-                SwipeToDismiss(
-                    state = rememberDismissState { direction ->
-                        if (direction == DismissValue.DismissedToStart) {
-                            if(browsingMode == BrowsingMode.ONE_BY_ONE && !isTimeValid()){
-                                context.showToast("Penghapusan tersedia pada 15 menit pertama " +
-                                        "setiap jam dengan kelipatan 3 (mis: 12, 21, dll).")
-                                return@rememberDismissState false
-                            }
-                            onDomainChanged(ArrayList(domainStateList).apply {removeAt(index)})
-                            return@rememberDismissState true
-                        }
-                        return@rememberDismissState false
-                    },
-                    modifier = Modifier.padding(8.dp),
-                    directions = setOf(DismissDirection.EndToStart),
-                    dismissContent = {
-                        UrlNavigatingEditText(
-                            valueText = value,
-                            placeholder = "Enter domain",
-                            onNewLink = {
-                                if(it.isEmpty()) return@UrlNavigatingEditText
-                                it.recheckValidityAndTransform().let{ checkString ->
-                                    if(checkString.checkLinkValidity())
-                                        onDomainChanged(ArrayList(domainStateList).apply {
-                                            this[index] = checkString
-                                        })
-                                    else
-                                        context.showToast("Invalid add subdomain (ex:www) or tld (ex.com)")
+                SlideFromEndContainer(content = {
+                    SwipeToDismiss(
+                        state = rememberDismissState { direction ->
+                            if (direction == DismissValue.DismissedToStart) {
+                                if(browsingMode == BrowsingMode.ONE_BY_ONE && !isTimeValid()){
+                                    context.showToast("Penghapusan tersedia pada 15 menit pertama " +
+                                            "setiap jam dengan kelipatan 3 (mis: 12, 21, dll).")
+                                    return@rememberDismissState false
                                 }
-                                keyboard?.hide()
-                            },
-                            isUseRefresh = false
-                        )
-                    },
-                    background = {}
-                )
+                                onDomainChanged(ArrayList(domainStateList).apply {removeAt(index)})
+                                return@rememberDismissState true
+                            }
+                            return@rememberDismissState false
+                        },
+                        modifier = Modifier.padding(8.dp),
+                        directions = setOf(DismissDirection.EndToStart),
+                        dismissContent = {
+                            UrlNavigatingEditText(
+                                valueText = value,
+                                placeholder = "Enter domain",
+                                onNewLink = {
+                                    if(it.isEmpty()) return@UrlNavigatingEditText
+                                    it.recheckValidityAndTransform().let{ checkString ->
+                                        if(checkString.checkLinkValidity())
+                                            onDomainChanged(ArrayList(domainStateList).apply {
+                                                this[index] = checkString
+                                            })
+                                        else
+                                            context.showToast("Invalid add subdomain (ex:www) or tld (ex.com)")
+                                    }
+                                    keyboard?.hide()
+                                },
+                                isUseRefresh = false
+                            )
+                        },
+                        background = {}
+                    )
+                })
                 Spacer(modifier = Modifier.height(8.dp))
             }
         }
@@ -103,13 +106,15 @@ fun DomainListInput(
                 contentDescription = null,
                 modifier = Modifier
                     .clickable {
-                        if(browsingMode == BrowsingMode.CLEAN_MODE && !isTimeValid()){
-                            context.showToast("Penyimpanan tersedia pada 15 menit pertama " +
-                                    "setiap jam dengan kelipatan 3 (mis: 12, 21, dll).")
+                        if (browsingMode == BrowsingMode.CLEAN_MODE && !isTimeValid()) {
+                            context.showToast(
+                                "Penyimpanan tersedia pada 15 menit pertama " +
+                                        "setiap jam dengan kelipatan 3 (mis: 12, 21, dll)."
+                            )
                             return@clickable
                         }
                         onDomainChanged(
-                            ArrayList(domainStateList).apply {add("")})
+                            ArrayList(domainStateList).apply { add("") })
                     }
                     .size(20.dp)
             )
